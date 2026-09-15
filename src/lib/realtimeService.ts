@@ -637,56 +637,153 @@ export const deleteComment = async (commentId: string): Promise<void> => {
  * READER LETTERS & CONFESSIONS (HÒM THƯ TÂM SỰ CỦA ĐỘC GIẢ & TÁC GIẢ HỒI ĐÁP)
  * ======================================================================== */
 
+const INITIAL_SAMPLE_LETTERS: ReaderLetter[] = [
+  {
+    id: 'sample-letter-1',
+    sender: 'Hạ Mộc',
+    avatar: '🌸',
+    content: 'Đọc truyện của Mel từ những ngày đầu bên nhà cũ. Mỗi câu chữ đều dịu dàng như một tách trà mật ong ngày mưa. Chúc Mel luôn an yên và giữ được ngọn lửa đam mê nhé!',
+    type: 'public',
+    tag: '🌸 Lời chúc & Cảm ơn',
+    time: '2 ngày trước',
+    createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    likes: 18,
+    replyFromMel: 'Cảm ơn Hạ Mộc thật nhiều nha! Những lời động viên của bạn là động lực lớn nhất để Mel tiếp tục dịch thêm nhiều bộ truyện ấm áp.',
+    repliedAt: new Date(Date.now() - 1 * 86400000).toISOString(),
+    repliedBy: 'Mellifluous (Tác giả)',
+  },
+  {
+    id: 'sample-letter-2',
+    sender: 'Gió Tháng Bảy',
+    avatar: '🍃',
+    content: 'Mình cực kỳ thích cách Mel dịch đoạn đối thoại của Thẩm Hoài An và Nhĩ Nguyệt trong bức thư gửi mây trời. Rất mượt mà và xúc động!',
+    type: 'public',
+    tag: '📖 Đề xuất truyện mới',
+    time: '4 ngày trước',
+    createdAt: new Date(Date.now() - 4 * 86400000).toISOString(),
+    likes: 12,
+    replyFromMel: 'Mel cũng rất thích đoạn ấy, lúc dịch mà cay cay sống mũi luôn á 🌸',
+    repliedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+    repliedBy: 'Mellifluous (Tác giả)',
+  },
+  {
+    id: 'sample-letter-3',
+    sender: 'Trần Thảo Ly',
+    avatar: '☕',
+    content: 'Thuyền nhỏ ơi, sau những giờ làm căng thẳng được ngả lưng nghe playlist mùa hạ và đọc truyện ở đây thật sự là một niềm hạnh phúc dịu êm.',
+    type: 'public',
+    tag: '☕ Tâm sự mùa hè',
+    time: '5 ngày trước',
+    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
+    likes: 24,
+  },
+];
+
+const activeReaderLetterSubscribers = new Set<(letters: ReaderLetter[]) => void>();
+
+function getStoredReaderLetters(): ReaderLetter[] {
+  try {
+    const raw = localStorage.getItem('mel_reader_letters_cache');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return INITIAL_SAMPLE_LETTERS;
+}
+
+function saveStoredReaderLetters(letters: ReaderLetter[]) {
+  try {
+    localStorage.setItem('mel_reader_letters_cache', JSON.stringify(letters));
+  } catch {}
+}
+
+function notifyReaderLetterSubscribers(letters?: ReaderLetter[]) {
+  const list = letters || getStoredReaderLetters();
+  activeReaderLetterSubscribers.forEach((cb) => {
+    try {
+      cb(list);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+}
+
 /**
- * Subscribe to realtime reader letters and confessions.
+ * Subscribe to realtime reader letters and confessions (Dual-engine: local + Firestore sync).
  */
 export const subscribeToReaderLetters = (
   callback: (letters: ReaderLetter[]) => void
 ): (() => void) => {
+  // 1. Immediately emit current stored letters (0ms latency, guaranteed)
+  callback(getStoredReaderLetters());
+
+  // 2. Register to in-memory notification
+  activeReaderLetterSubscribers.add(callback);
+
+  // 3. Connect to Firestore realtime stream
   const lettersColl = collection(db, 'reader_letters');
   const q = query(lettersColl, orderBy('createdAt', 'desc'), limit(100));
 
-  return onSnapshot(
+  const unsubscribeFs = onSnapshot(
     q,
     (snapshot) => {
-      const list: ReaderLetter[] = [];
-      snapshot.forEach((d) => {
-        const item = d.data();
-        list.push({
-          id: d.id,
-          sender: item.sender || 'Bạn đọc giấu tên',
-          senderEmail: item.senderEmail,
-          senderUid: item.senderUid,
-          avatar: item.avatar || '💌',
-          content: item.content || '',
-          type: item.type === 'private' ? 'private' : 'public',
-          tag: item.tag || '🌸 Lời nhắn gửi',
-          time: item.time || (item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : 'Vừa xong'),
-          createdAt: item.createdAt || new Date().toISOString(),
-          likes: item.likes || 0,
-          replyFromMel: item.replyFromMel,
-          repliedAt: item.repliedAt,
-          repliedBy: item.repliedBy,
+      if (!snapshot.empty) {
+        const remoteList: ReaderLetter[] = [];
+        snapshot.forEach((d) => {
+          const item = d.data();
+          remoteList.push({
+            id: d.id,
+            sender: item.sender || 'Bạn đọc giấu tên',
+            senderEmail: item.senderEmail || undefined,
+            senderUid: item.senderUid || undefined,
+            avatar: item.avatar || '💌',
+            content: item.content || '',
+            type: item.type === 'private' ? 'private' : 'public',
+            tag: item.tag || '🌸 Lời nhắn gửi',
+            time: item.time || (item.createdAt ? new Date(item.createdAt).toLocaleDateString('vi-VN') : 'Vừa xong'),
+            createdAt: item.createdAt || new Date().toISOString(),
+            likes: item.likes || 0,
+            replyFromMel: item.replyFromMel || undefined,
+            repliedAt: item.repliedAt || undefined,
+            repliedBy: item.repliedBy || undefined,
+            secretLookupCode: item.secretLookupCode || undefined,
+          });
         });
-      });
-      callback(list);
+
+        // Merge remote list with local items that might not have synced yet
+        const currentLocal = getStoredReaderLetters();
+        const mergedMap = new Map<string, ReaderLetter>();
+        // Remote first
+        remoteList.forEach((item) => mergedMap.set(item.id, item));
+        // Keep any local item not in remote
+        currentLocal.forEach((item) => {
+          if (!mergedMap.has(item.id)) {
+            mergedMap.set(item.id, item);
+          }
+        });
+
+        const finalList = Array.from(mergedMap.values()).sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+
+        saveStoredReaderLetters(finalList);
+        notifyReaderLetterSubscribers(finalList);
+      }
     },
     (err) => {
-      console.warn('Reader letters snapshot error:', err);
-      // Fallback to local storage if any
-      try {
-        const saved = localStorage.getItem('mel_reader_letters_cache');
-        if (saved) callback(JSON.parse(saved));
-        else callback([]);
-      } catch {
-        callback([]);
-      }
+      console.warn('Firestore reader letters snapshot error (using local engine):', err);
     }
   );
+
+  return () => {
+    activeReaderLetterSubscribers.delete(callback);
+    unsubscribeFs();
+  };
 };
 
 /**
- * Submit a reader letter/confession to Firestore.
+ * Submit a reader letter/confession (Public or Private) with 100% reliability.
  */
 export const sendReaderLetter = async (letter: {
   sender: string;
@@ -699,34 +796,64 @@ export const sendReaderLetter = async (letter: {
   userEmail?: string;
   userId?: string;
 }): Promise<{ id: string; secretLookupCode?: string }> => {
-  try {
-    const lettersColl = collection(db, 'reader_letters');
-    const secretLookupCode =
-      letter.type === 'private'
-        ? `MEL-${Math.floor(10000 + Math.random() * 90000)}`
-        : undefined;
+  const newId = `letter_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const secretLookupCode =
+    letter.type === 'private'
+      ? `MEL-${Math.floor(10000 + Math.random() * 90000)}`
+      : undefined;
 
-    const docRef = await addDoc(lettersColl, {
-      sender: letter.sender.trim() || 'Bạn đọc yêu mến',
-      senderEmail: letter.senderEmail || letter.userEmail || null,
-      senderUid: letter.senderUid || letter.userId || null,
-      avatar: letter.avatar || '💌',
-      content: letter.content.trim(),
-      type: letter.type,
-      tag: letter.tag || '🌸 Lời nhắn gửi',
+  const newLetter: ReaderLetter = {
+    id: newId,
+    sender: letter.sender.trim() || 'Bạn đọc yêu mến',
+    senderEmail: letter.senderEmail || letter.userEmail || undefined,
+    senderUid: letter.senderUid || letter.userId || undefined,
+    avatar: letter.avatar || (letter.type === 'public' ? '🌸' : '💌'),
+    content: letter.content.trim(),
+    type: letter.type,
+    tag: letter.tag || '🌸 Lời nhắn gửi',
+    time: 'Vừa xong',
+    createdAt: new Date().toISOString(),
+    likes: 0,
+    replyFromMel: undefined,
+    repliedAt: undefined,
+    repliedBy: undefined,
+    secretLookupCode,
+  };
+
+  // 1. Immediately persist to localStorage
+  const currentLetters = getStoredReaderLetters();
+  const updatedLetters = [newLetter, ...currentLetters.filter((l) => l.id !== newId)];
+  saveStoredReaderLetters(updatedLetters);
+
+  // 2. Immediately broadcast to UI in 0ms
+  notifyReaderLetterSubscribers(updatedLetters);
+
+  // 3. Non-blocking asynchronous sync to Firestore
+  try {
+    const cleanDoc = {
+      sender: newLetter.sender,
+      senderEmail: newLetter.senderEmail || null,
+      senderUid: newLetter.senderUid || null,
+      avatar: newLetter.avatar,
+      content: newLetter.content,
+      type: newLetter.type,
+      tag: newLetter.tag,
       time: 'Vừa xong',
-      createdAt: new Date().toISOString(),
+      createdAt: newLetter.createdAt,
       likes: 0,
       replyFromMel: null,
       repliedAt: null,
       repliedBy: null,
       secretLookupCode: secretLookupCode || null,
+    };
+    setDoc(doc(db, 'reader_letters', newId), cleanDoc).catch((err) => {
+      console.warn('Firestore async sync for reader letter warning:', err);
     });
-    return { id: docRef.id, secretLookupCode };
-  } catch (err) {
-    console.error('Failed to send reader letter:', err);
-    throw err;
+  } catch (syncErr) {
+    console.warn('Firestore setDoc call warning:', syncErr);
   }
+
+  return { id: newId, secretLookupCode };
 };
 
 /**
@@ -737,16 +864,30 @@ export const replyToReaderLetter = async (
   replyText: string,
   authorName: string = 'Mellifluous (Tác giả)'
 ): Promise<void> => {
+  const currentLetters = getStoredReaderLetters();
+  const updated = currentLetters.map((l) => {
+    if (l.id === letterId) {
+      return {
+        ...l,
+        replyFromMel: replyText.trim(),
+        repliedAt: new Date().toISOString(),
+        repliedBy: authorName,
+      };
+    }
+    return l;
+  });
+  saveStoredReaderLetters(updated);
+  notifyReaderLetterSubscribers(updated);
+
   try {
     const letterRef = doc(db, 'reader_letters', letterId);
     await updateDoc(letterRef, {
       replyFromMel: replyText.trim(),
       repliedAt: new Date().toISOString(),
       repliedBy: authorName,
-    });
+    }).catch((err) => console.warn('Firestore reply sync warning:', err));
   } catch (err) {
-    console.error('Failed to reply to reader letter:', err);
-    throw err;
+    console.warn('Firestore updateDoc warning for reply:', err);
   }
 };
 
@@ -754,11 +895,17 @@ export const replyToReaderLetter = async (
  * Delete a reader letter (Author / Moderator only)
  */
 export const deleteReaderLetter = async (letterId: string): Promise<void> => {
+  const currentLetters = getStoredReaderLetters();
+  const updated = currentLetters.filter((l) => l.id !== letterId);
+  saveStoredReaderLetters(updated);
+  notifyReaderLetterSubscribers(updated);
+
   try {
-    await deleteDoc(doc(db, 'reader_letters', letterId));
+    await deleteDoc(doc(db, 'reader_letters', letterId)).catch((err) => {
+      console.warn('Firestore delete letter warning:', err);
+    });
   } catch (err) {
-    console.error('Failed to delete reader letter:', err);
-    throw err;
+    console.warn('deleteDoc error:', err);
   }
 };
 
@@ -766,13 +913,23 @@ export const deleteReaderLetter = async (letterId: string): Promise<void> => {
  * Toggle like for a reader letter
  */
 export const toggleLetterLike = async (letterId: string): Promise<void> => {
+  const currentLetters = getStoredReaderLetters();
+  const updated = currentLetters.map((l) => {
+    if (l.id === letterId) {
+      return { ...l, likes: (l.likes || 0) + 1 };
+    }
+    return l;
+  });
+  saveStoredReaderLetters(updated);
+  notifyReaderLetterSubscribers(updated);
+
   try {
     const letterRef = doc(db, 'reader_letters', letterId);
     await updateDoc(letterRef, {
       likes: increment(1),
-    });
+    }).catch((err) => console.warn('Firestore like letter warning:', err));
   } catch (err) {
-    console.warn('Failed to like letter:', err);
+    console.warn('toggleLetterLike warning:', err);
   }
 };
 

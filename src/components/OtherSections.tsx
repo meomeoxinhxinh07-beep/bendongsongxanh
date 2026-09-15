@@ -22,6 +22,7 @@ import {
   Trash2,
   KeyRound,
   Search,
+  Copy,
 } from 'lucide-react';
 import { PLAYLIST } from '../data/mockData';
 import { bgmEngine, AudioTrack, TRACK_LIST } from '../utils/audioPlayer';
@@ -60,6 +61,7 @@ export const OtherSections: React.FC = () => {
   const [selectedTag, setSelectedTag] = useState('🌸 Lời chúc & Cảm ơn');
   const [sentSuccessType, setSentSuccessType] = useState<'public' | 'private' | null>(null);
   const [createdSecretCode, setCreatedSecretCode] = useState<string | null>(null);
+  const [isCopiedCode, setIsCopiedCode] = useState(false);
   const [isSubmittingLetter, setIsSubmittingLetter] = useState(false);
 
   // Stored public and private letters from Firestore
@@ -460,7 +462,7 @@ export const OtherSections: React.FC = () => {
                     <span>Đã ghim bức thư của bạn lên Hòm thư công khai! 🌸</span>
                   </div>
                 ) : sentSuccessType === 'private' ? (
-                  <div className="p-3.5 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 text-xs font-medium flex flex-col gap-1.5 animate-in fade-in">
+                  <div className="p-3.5 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-900 dark:text-purple-200 text-xs font-medium flex flex-col gap-2 animate-in fade-in">
                     <div className="flex items-center gap-2">
                       <Lock className="w-4 h-4 text-purple-600 shrink-0" />
                       <span className="font-bold">
@@ -468,8 +470,47 @@ export const OtherSections: React.FC = () => {
                       </span>
                     </div>
                     {createdSecretCode && (
-                      <div className="text-[11px] text-purple-800 dark:text-purple-300 font-sans">
-                        Mã tra cứu thư của bạn: <strong className="font-mono text-purple-900 dark:text-purple-100 bg-white/70 dark:bg-stone-800 px-2 py-0.5 rounded-md border border-purple-300">{createdSecretCode}</strong>. Bạn hãy lưu lại mã này để tra cứu phản hồi từ Mel nhé!
+                      <div className="space-y-2">
+                        <div className="text-[11px] text-purple-800 dark:text-purple-300 font-sans leading-relaxed">
+                          Mã tra cứu thư của bạn: <strong className="font-mono text-purple-900 dark:text-purple-100 bg-white dark:bg-stone-800 px-2 py-0.5 rounded-md border border-purple-300 dark:border-stone-700 shadow-2xs">{createdSecretCode}</strong>.
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (navigator.clipboard) {
+                                navigator.clipboard.writeText(createdSecretCode);
+                                setIsCopiedCode(true);
+                                setTimeout(() => setIsCopiedCode(false), 2500);
+                              }
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-white dark:bg-stone-800 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-stone-700 text-[11px] font-semibold flex items-center gap-1.5 shadow-2xs hover:bg-purple-50 transition-colors cursor-pointer"
+                          >
+                            {isCopiedCode ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-500" />
+                                <span>Đã sao chép!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>Sao chép mã tra cứu</span>
+                              </>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLookupInputCode(createdSecretCode);
+                              const elem = document.getElementById('reader-letter-lookup-box');
+                              if (elem) elem.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-semibold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                          >
+                            <KeyRound className="w-3 h-3" />
+                            <span>Xem ngay trong hộp tra cứu</span>
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -513,7 +554,7 @@ export const OtherSections: React.FC = () => {
           </div>
 
           {/* HỘP TRA CỨU THƯ THẦM KÍN DÀNH CHO ĐỘC GIẢ */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-50/70 to-pink-50/70 dark:from-stone-800/80 dark:to-purple-950/30 border border-purple-200 dark:border-stone-700 space-y-3">
+          <div id="reader-letter-lookup-box" className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-50/70 to-pink-50/70 dark:from-stone-800/80 dark:to-purple-950/30 border border-purple-200 dark:border-stone-700 space-y-3">
             <div className="flex items-center gap-2">
               <KeyRound className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               <h4 className="text-xs sm:text-sm font-bold text-stone-800 dark:text-stone-200">

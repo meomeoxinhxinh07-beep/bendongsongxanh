@@ -433,7 +433,6 @@ export default function App() {
                 <HeroIntro
                   onExploreClick={() => handleLetterSelect('completed')}
                   onPasswordHelpClick={() => handleLetterSelect('password')}
-                  onAuthorStudioClick={() => setIsAuthorModalOpen(true)}
                 />
 
                 {/* 2. Main Two-Column Layout on Home Page */}

@@ -100,36 +100,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* 2. SECTION: DANH MỤC ĐỔ XUỐNG ĐỂ CHỌN TÁC PHẨM TRUYỆN / CHUYÊN MỤC (Nền đen đặc như cũ, không dùng gradient, chữ rõ nét tương phản cao) */}
-      <div className="relative p-5 rounded-2xl bg-stone-900 border border-stone-800 shadow-md space-y-4">
+      {/* 2. SECTION: DANH MỤC ĐỔ XUỐNG ĐỂ CHỌN TÁC PHẨM TRUYỆN / CHUYÊN MỤC (Linh hoạt theo chế độ sáng/tối, đồng bộ và rõ chữ) */}
+      <div className="relative p-5 rounded-2xl bg-white dark:bg-stone-900 border border-pink-100 dark:border-stone-800 shadow-sm space-y-4 transition-colors">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-xl bg-stone-800 text-pink-400 border border-stone-700">
+            <div className="p-1.5 rounded-xl bg-pink-50 text-pink-600 border border-pink-200 dark:bg-stone-800 dark:text-pink-400 dark:border-stone-700 shadow-2xs">
               <BookMarked className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-serif text-base font-bold text-white flex items-center gap-1.5">
+              <h3 className="font-serif text-base font-bold text-stone-800 dark:text-white flex items-center gap-1.5">
                 <span>Chọn tác phẩm truyện</span>
                 <span className="text-xs">🌸</span>
               </h3>
-              <p className="text-[11px] text-stone-300 font-sans">
+              <p className="text-[11px] text-stone-500 dark:text-stone-400 font-sans">
                 Đổ xuống danh mục để đọc ngay
               </p>
             </div>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-800 text-pink-300 font-semibold border border-stone-700">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-pink-100/80 text-pink-800 dark:bg-stone-800 dark:text-pink-300 font-semibold border border-pink-200 dark:border-stone-700">
             {stories.length} bộ
           </span>
         </div>
 
         {/* Custom Styled Dropdown 1: Tác phẩm truyện */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-stone-200 flex items-center justify-between">
+          <label className="text-xs font-semibold text-stone-700 dark:text-stone-200 flex items-center justify-between">
             <span className="flex items-center gap-1">
               <span>Danh mục truyện:</span>
-              <span className="text-pink-400 text-[10px]">✦</span>
+              <span className="text-pink-500 dark:text-pink-400 text-[10px]">✦</span>
             </span>
-            <span className="text-[11px] text-pink-300 font-medium">
+            <span className="text-[11px] text-pink-600 dark:text-pink-300 font-medium">
               Kèm thanh trượt & tìm kiếm
             </span>
           </label>
@@ -142,12 +142,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Custom Styled Dropdown 2: Thể loại / Chuyên mục truyện */}
         <div className="space-y-1.5 pt-1">
-          <label className="text-xs font-semibold text-stone-200 flex items-center justify-between">
+          <label className="text-xs font-semibold text-stone-700 dark:text-stone-200 flex items-center justify-between">
             <span className="flex items-center gap-1">
               <span>Lọc theo thể loại / chuyên mục:</span>
-              <span className="text-emerald-400 text-[10px]">🍃</span>
+              <span className="text-emerald-500 dark:text-emerald-400 text-[10px]">🍃</span>
             </span>
-            <span className="text-[11px] text-emerald-300 font-medium">
+            <span className="text-[11px] text-emerald-600 dark:text-emerald-300 font-medium">
               {allGenres.length} tags
             </span>
           </label>

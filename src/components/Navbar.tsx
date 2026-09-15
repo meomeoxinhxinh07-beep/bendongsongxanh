@@ -66,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     badge?: string;
   }
 
-  // 6 desktop navigation items with explicit Trang chủ and responsive labels
+  // 6 desktop navigation items with full, complete labels (never truncated or clipped)
   const desktopNavItems: NavItem[] = [
     {
       id: 'home',
@@ -77,32 +77,32 @@ export const Navbar: React.FC<NavbarProps> = ({
     {
       id: 'completed',
       label: 'Truyện đã hoàn',
-      shortLabel: 'Đã hoàn',
+      shortLabel: 'Truyện đã hoàn',
       icon: <BookOpen className="w-3.5 h-3.5 stroke-[1.75]" />,
     },
     {
       id: 'ongoing',
       label: 'Đang tiến hành',
-      shortLabel: 'Đang ra',
+      shortLabel: 'Đang tiến hành',
       icon: <Bookmark className="w-3.5 h-3.5 stroke-[1.75]" />,
     },
     {
       id: 'password',
       label: 'Gợi ý Password',
-      shortLabel: 'Password',
+      shortLabel: 'Gợi ý Password',
       icon: <Key className="w-3.5 h-3.5 stroke-[1.75]" />,
       badge: 'VIP',
     },
     {
       id: 'other',
       label: 'Góc tâm sự & Nhạc',
-      shortLabel: 'Tâm sự',
+      shortLabel: 'Góc tâm sự & Nhạc',
       icon: <Heart className="w-3.5 h-3.5 stroke-[1.75]" />,
     },
     {
       id: 'about',
       label: 'Về Mellifluous',
-      shortLabel: 'Giới thiệu',
+      shortLabel: 'Về Mellifluous',
       icon: <Info className="w-3.5 h-3.5 stroke-[1.75]" />,
     },
   ];
@@ -159,11 +159,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* =================================================================== */}
-        {/* 2. CENTERED DESKTOP NAVIGATION (NO OVERLAP, RESPONSIVE LABELS)      */}
+        {/* 2. CENTERED DESKTOP NAVIGATION (FULL LABELS, NEVER OVERLAPPING)     */}
         {/* =================================================================== */}
         <nav
           aria-label="Thanh điều hướng chính"
-          className="hidden lg:flex items-center justify-center gap-1 xl:gap-1.5 flex-1 min-w-0 px-1 overflow-hidden"
+          className="hidden lg:flex items-center justify-center gap-1 xl:gap-1.5 flex-1 min-w-0 px-1"
         >
           {desktopNavItems.map((item) => {
             const isActive = currentTab === item.id;
@@ -173,7 +173,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 id={`nav-link-${item.id}`}
                 type="button"
                 onClick={() => handleSelect(item.id)}
-                className={`group relative px-2 xl:px-2.5 py-1.5 rounded-xl text-xs xl:text-[13px] font-medium transition-all duration-200 flex items-center gap-1 xl:gap-1.5 whitespace-nowrap cursor-pointer shrink-0 ${
+                className={`group relative px-2 lg:px-2.5 xl:px-3 py-1.5 rounded-xl text-xs xl:text-[13px] font-medium transition-all duration-200 flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0 ${
                   isActive
                     ? 'bg-pink-100/90 text-pink-900 dark:bg-pink-950/80 dark:text-pink-200 font-semibold shadow-2xs border border-pink-200/80 dark:border-pink-800'
                     : 'text-stone-600 hover:text-pink-600 hover:bg-pink-50/70 dark:text-stone-300 dark:hover:text-pink-300 dark:hover:bg-stone-800/60'
@@ -188,10 +188,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   {item.icon}
                 </span>
-                <span className="hidden xl:inline">{item.label}</span>
-                <span className="inline xl:hidden">{item.shortLabel}</span>
+                <span className="whitespace-nowrap leading-none">{item.label}</span>
                 {item.badge && (
-                  <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 bg-amber-400 text-amber-950 rounded-full dark:bg-amber-500 dark:text-stone-950 shadow-2xs">
+                  <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 bg-amber-400 text-amber-950 rounded-full dark:bg-amber-500 dark:text-stone-950 shadow-2xs leading-none">
                     {item.badge}
                   </span>
                 )}
@@ -204,21 +203,20 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         {/* =================================================================== */}
-        {/* 3. ACTION CONTROLS (SEARCH, AUTH, MUSIC, PETALS, THEME, HAMBURGER)  */}
+        {/* 3. ACTION CONTROLS (AUTHOR STUDIO, USER, UTILITY TOOLBAR)           */}
         {/* =================================================================== */}
-        <div id="navbar-action-controls" className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 shrink-0">
+        <div id="navbar-action-controls" className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Author Studio & Publishing Reset Button - ONLY FOR AUTHOR & COLLABORATORS */}
           {isAuthor && onOpenAuthorModal && (
             <button
               type="button"
               id="navbar-author-studio-btn"
               onClick={onOpenAuthorModal}
-              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-pink-100/90 hover:bg-pink-200/90 text-pink-800 dark:bg-pink-950/80 dark:text-pink-300 dark:hover:bg-pink-900/80 border border-pink-200/80 dark:border-pink-800 text-xs font-semibold shadow-2xs transition-all cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-pink-100/90 hover:bg-pink-200/90 text-pink-800 dark:bg-pink-950/80 dark:text-pink-300 dark:hover:bg-pink-900/80 border border-pink-200/80 dark:border-pink-800 text-xs font-semibold shadow-2xs transition-all cursor-pointer whitespace-nowrap"
               title="Trung tâm Quản lý bài đăng & Đưa số liệu về 0 (Chỉ dành cho Tác giả)"
             >
               <span className="select-none text-xs">🌸</span>
-              <span className="hidden xl:inline">Bàn làm việc Tác giả</span>
-              <span className="inline xl:hidden">Bàn làm việc</span>
+              <span className="whitespace-nowrap leading-none font-medium">Bàn làm việc Tác giả</span>
             </button>
           )}
 
@@ -227,7 +225,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             type="button"
             id="navbar-auth-btn"
             onClick={openAuthModal}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer shadow-2xs ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer shadow-2xs whitespace-nowrap ${
               user
                 ? isAuthor
                   ? 'bg-rose-50 dark:bg-pink-950/80 text-rose-700 dark:text-pink-300 border-rose-200 dark:border-pink-800'
@@ -251,104 +249,106 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span>{(user.displayName || user.email || 'M')[0].toUpperCase()}</span>
                   )}
                 </div>
-                <span className="font-serif truncate max-w-[85px]">
+                <span className="font-serif truncate max-w-[85px] leading-none">
                   {isAuthor ? '🌸 Mel' : (user.displayName || 'Độc giả')}
                 </span>
               </>
             ) : (
               <>
                 <UserIcon className="w-3.5 h-3.5" />
-                <span className="inline font-medium">Đăng nhập</span>
+                <span className="inline font-medium leading-none">Đăng nhập</span>
               </>
             )}
           </button>
 
-          {/* Search Button - Compact Icon-Only */}
-          <button
-            type="button"
-            id="navbar-search-btn"
-            onClick={onOpenSearch}
-            className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-stone-600 hover:text-pink-600 bg-stone-100 hover:bg-pink-100/70 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700/80 dark:hover:text-pink-300 border border-stone-200/80 dark:border-stone-700 transition-all cursor-pointer shadow-2xs"
-            title="Tìm kiếm truyện và chương (Ctrl+K / ⌘K)"
-            aria-label="Tìm kiếm truyện"
-          >
-            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </button>
-
-
-          {/* Background Music Toggle Button */}
-          <button
-            type="button"
-            id="navbar-bgm-btn"
-            onClick={handleToggleMusic}
-            className={`flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl border transition-all cursor-pointer ${
-              isMusicPlaying
-                ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-600 shadow-2xs'
-                : 'bg-stone-100 hover:bg-pink-50 text-stone-600 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700 border-stone-200 dark:border-stone-700'
-            }`}
-            title={
-              isMusicPlaying
-                ? `Đang phát nhạc: ${currentTrack.title} (Nhấp để tạm dừng)`
-                : 'Bật nhạc nền thư giãn khi đọc truyện'
-            }
-            aria-label={isMusicPlaying ? 'Tạm dừng nhạc nền' : 'Bật nhạc nền'}
-          >
-            {isMusicPlaying ? (
-              <div className="flex items-end gap-0.5 h-3">
-                <span className="w-0.5 h-2.5 bg-white animate-bounce rounded-full" />
-                <span className="w-0.5 h-3.5 bg-white animate-bounce delay-100 rounded-full" />
-                <span className="w-0.5 h-2 bg-white animate-bounce delay-200 rounded-full" />
-              </div>
-            ) : (
-              <Music className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            )}
-          </button>
-
-          {/* Sakura Petals Toggle Button - Visible on sm: screens and up */}
-          <button
-            type="button"
-            id="navbar-petals-toggle-btn"
-            onClick={onTogglePetals}
-            className={`hidden sm:flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl border transition-all cursor-pointer ${
-              isPetalsEnabled
-                ? 'bg-pink-100/90 dark:bg-pink-950/70 text-pink-700 dark:text-pink-300 border-pink-300/80 dark:border-pink-800 shadow-2xs ring-1 ring-pink-300/50'
-                : 'bg-stone-100 hover:bg-pink-50 text-stone-400 dark:bg-stone-800 dark:text-stone-500 dark:hover:bg-stone-700 border-stone-200 dark:border-stone-700'
-            }`}
-            title={
-              isPetalsEnabled
-                ? 'Cánh hoa rơi: Đang BẬT (Nhấp để tắt hiệu ứng)'
-                : 'Cánh hoa rơi: Đang TẮT (Nhấp để bật cánh hoa bồng bềnh)'
-            }
-            aria-label={isPetalsEnabled ? 'Tắt hiệu ứng hoa rơi' : 'Bật hiệu ứng hoa rơi'}
-          >
-            <span
-              className={`text-sm sm:text-base leading-none transition-transform select-none ${
-                isPetalsEnabled ? 'scale-110 drop-shadow-xs' : 'grayscale opacity-50'
-              }`}
+          {/* Compact Reading Utilities Group (Search, Music, Petals, Theme) */}
+          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-stone-100/90 dark:bg-stone-800/90 border border-stone-200/80 dark:border-stone-700/80 shadow-2xs">
+            {/* Search Button */}
+            <button
+              type="button"
+              id="navbar-search-btn"
+              onClick={onOpenSearch}
+              className="flex items-center justify-center w-7.5 h-7.5 sm:w-8 sm:h-8 rounded-lg text-stone-600 hover:text-pink-600 hover:bg-white dark:bg-transparent dark:text-stone-300 dark:hover:bg-stone-700 dark:hover:text-pink-300 transition-all cursor-pointer"
+              title="Tìm kiếm truyện và chương (Ctrl+K / ⌘K)"
+              aria-label="Tìm kiếm truyện"
             >
-              🌸
-            </span>
-          </button>
+              <Search className="w-3.5 h-3.5" />
+            </button>
 
-          {/* Dark / Light Mode Switch */}
-          <button
-            type="button"
-            id="toggle-theme-btn"
-            onClick={onToggleDarkMode}
-            className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-stone-100 hover:bg-amber-100/70 text-stone-700 dark:bg-stone-800 dark:hover:bg-stone-700 dark:text-amber-300 border border-stone-200/80 dark:border-stone-700 transition-colors cursor-pointer"
-            title={
-              isDarkMode
-                ? 'Chuyển sang giao diện Ban ngày rực rỡ'
-                : 'Chuyển sang giao diện Đêm hè ngắm sao'
-            }
-            aria-label="Đổi giao diện sáng tối"
-          >
-            {isDarkMode ? (
-              <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-300 transition-transform duration-200" />
-            ) : (
-              <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-stone-600 transition-transform duration-200" />
-            )}
-          </button>
+            {/* Background Music Toggle Button */}
+            <button
+              type="button"
+              id="navbar-bgm-btn"
+              onClick={handleToggleMusic}
+              className={`flex items-center justify-center w-7.5 h-7.5 sm:w-8 sm:h-8 rounded-lg transition-all cursor-pointer ${
+                isMusicPlaying
+                  ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-2xs'
+                  : 'text-stone-600 hover:text-pink-600 hover:bg-white dark:text-stone-300 dark:hover:bg-stone-700'
+              }`}
+              title={
+                isMusicPlaying
+                  ? `Đang phát nhạc: ${currentTrack.title} (Nhấp để tạm dừng)`
+                  : 'Bật nhạc nền thư giãn khi đọc truyện'
+              }
+              aria-label={isMusicPlaying ? 'Tạm dừng nhạc nền' : 'Bật nhạc nền'}
+            >
+              {isMusicPlaying ? (
+                <div className="flex items-end gap-0.5 h-3">
+                  <span className="w-0.5 h-2.5 bg-white animate-bounce rounded-full" />
+                  <span className="w-0.5 h-3.5 bg-white animate-bounce delay-100 rounded-full" />
+                  <span className="w-0.5 h-2 bg-white animate-bounce delay-200 rounded-full" />
+                </div>
+              ) : (
+                <Music className="w-3.5 h-3.5" />
+              )}
+            </button>
+
+            {/* Sakura Petals Toggle Button */}
+            <button
+              type="button"
+              id="navbar-petals-toggle-btn"
+              onClick={onTogglePetals}
+              className={`hidden sm:flex items-center justify-center w-7.5 h-7.5 sm:w-8 sm:h-8 rounded-lg transition-all cursor-pointer ${
+                isPetalsEnabled
+                  ? 'bg-pink-100 dark:bg-pink-950/70 text-pink-700 dark:text-pink-300 shadow-2xs'
+                  : 'text-stone-400 hover:text-pink-600 hover:bg-white dark:text-stone-500 dark:hover:bg-stone-700'
+              }`}
+              title={
+                isPetalsEnabled
+                  ? 'Cánh hoa rơi: Đang BẬT (Nhấp để tắt hiệu ứng)'
+                  : 'Cánh hoa rơi: Đang TẮT (Nhấp để bật cánh hoa bồng bềnh)'
+              }
+              aria-label={isPetalsEnabled ? 'Tắt hiệu ứng hoa rơi' : 'Bật hiệu ứng hoa rơi'}
+            >
+              <span
+                className={`text-xs sm:text-sm leading-none transition-transform select-none ${
+                  isPetalsEnabled ? 'scale-110 drop-shadow-xs' : 'grayscale opacity-50'
+                }`}
+              >
+                🌸
+              </span>
+            </button>
+
+            {/* Dark / Light Mode Switch */}
+            <button
+              type="button"
+              id="toggle-theme-btn"
+              onClick={onToggleDarkMode}
+              className="flex items-center justify-center w-7.5 h-7.5 sm:w-8 sm:h-8 rounded-lg text-stone-600 hover:text-amber-500 hover:bg-white dark:text-stone-300 dark:hover:bg-stone-700 dark:hover:text-amber-300 transition-colors cursor-pointer"
+              title={
+                isDarkMode
+                  ? 'Chuyển sang giao diện Ban ngày rực rỡ'
+                  : 'Chuyển sang giao diện Đêm hè ngắm sao'
+              }
+              aria-label="Đổi giao diện sáng tối"
+            >
+              {isDarkMode ? (
+                <Sun className="w-3.5 h-3.5 text-amber-300 transition-transform duration-200" />
+              ) : (
+                <Moon className="w-3.5 h-3.5 text-stone-600 transition-transform duration-200" />
+              )}
+            </button>
+          </div>
 
           {/* Mobile & Tablet Hamburger Menu Button (Visible on < lg: 1024px) */}
           <button

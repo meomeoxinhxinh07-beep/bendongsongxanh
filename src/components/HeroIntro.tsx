@@ -12,13 +12,11 @@ import {
 interface HeroIntroProps {
   onExploreClick: () => void;
   onPasswordHelpClick: () => void;
-  onAuthorStudioClick?: () => void;
 }
 
 export const HeroIntro: React.FC<HeroIntroProps> = ({
   onExploreClick,
   onPasswordHelpClick,
-  onAuthorStudioClick,
 }) => {
   return (
     <section
@@ -108,19 +106,6 @@ export const HeroIntro: React.FC<HeroIntroProps> = ({
             <Heart className="w-4 h-4 text-pink-500" />
             <span>Xem hướng dẫn giải pass</span>
           </button>
-
-          {onAuthorStudioClick && (
-            <button
-              type="button"
-              id="hero-author-studio-btn"
-              onClick={onAuthorStudioClick}
-              className="px-4 py-2.5 rounded-xl bg-pink-50 hover:bg-pink-100/80 dark:bg-pink-950/60 dark:hover:bg-pink-900/60 text-pink-700 dark:text-pink-300 border border-pink-200/80 dark:border-pink-800/80 font-medium text-sm transition-colors flex items-center gap-2 cursor-pointer shadow-2xs"
-              title="Mở bảng điều khiển xuất bản & đưa các chỉ số về 0"
-            >
-              <Sparkles className="w-4 h-4 text-pink-500" />
-              <span>Xuất bản & Đặt số liệu về 0</span>
-            </button>
-          )}
         </div>
       </div>
     </section>

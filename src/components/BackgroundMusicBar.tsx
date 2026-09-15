@@ -16,6 +16,7 @@ import {
 export const BackgroundMusicBar: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<AudioTrack>(TRACK_LIST[0]);
+  const [tracks, setTracks] = useState<AudioTrack[]>(bgmEngine.getTracks());
   const [volume, setVolume] = useState(0.4);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -26,6 +27,9 @@ export const BackgroundMusicBar: React.FC = () => {
       setIsPlaying(state.isPlaying);
       setCurrentTrack(state.track);
       setVolume(state.volume);
+      if (state.tracks) {
+        setTracks(state.tracks);
+      }
     });
     return unsubscribe;
   }, []);
@@ -90,7 +94,7 @@ export const BackgroundMusicBar: React.FC = () => {
 
           {/* Track List */}
           <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
-            {TRACK_LIST.map((t, idx) => {
+            {tracks.map((t, idx) => {
               const isSelected = currentTrack.id === t.id;
               return (
                 <button
