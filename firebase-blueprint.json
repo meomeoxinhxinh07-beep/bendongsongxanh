@@ -1,0 +1,182 @@
+{
+  "entities": {
+    "site_stats": {
+      "title": "Site Realtime Statistics",
+      "description": "Global realtime visitor, follower, and activity statistics",
+      "type": "object",
+      "properties": {
+        "totalVisits": { "type": "number", "description": "Total visits across all devices and browsers" },
+        "activeReaders": { "type": "number", "description": "Current active reader heartbeat count" },
+        "totalFollowers": { "type": "number", "description": "Total newsletter/story followers" },
+        "totalComments": { "type": "number", "description": "Total reader comments count" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp of last update" }
+      },
+      "required": ["totalVisits"]
+    },
+    "story_stats": {
+      "title": "Story Realtime Statistics",
+      "description": "Realtime views, likes, follower bookmarks and ratings per story",
+      "type": "object",
+      "properties": {
+        "storyId": { "type": "string", "description": "Unique story ID" },
+        "views": { "type": "number", "description": "Total view count" },
+        "likes": { "type": "number", "description": "Total like count" },
+        "followers": { "type": "number", "description": "Total followers bookmarking this story" },
+        "ratingSum": { "type": "number", "description": "Sum of all ratings given" },
+        "ratingCount": { "type": "number", "description": "Number of ratings submitted" },
+        "commentCount": { "type": "number", "description": "Number of comments on this story" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp" }
+      },
+      "required": ["storyId"]
+    },
+    "chapter_stats": {
+      "title": "Chapter Realtime Statistics",
+      "description": "Realtime views and likes per chapter",
+      "type": "object",
+      "properties": {
+        "chapterId": { "type": "string", "description": "Chapter unique identifier" },
+        "storyId": { "type": "string", "description": "Story identifier" },
+        "chapterNumber": { "type": "number", "description": "Chapter number" },
+        "views": { "type": "number", "description": "Chapter view count" },
+        "likes": { "type": "number", "description": "Chapter like count" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp" }
+      },
+      "required": ["chapterId", "storyId"]
+    },
+    "comments": {
+      "title": "Reader Comments",
+      "description": "Realtime public comments left on stories and chapters",
+      "type": "object",
+      "properties": {
+        "storyId": { "type": "string", "description": "Story identifier" },
+        "chapterId": { "type": "string", "description": "Optional chapter ID" },
+        "user": { "type": "string", "description": "Display name of the commenter" },
+        "avatar": { "type": "string", "description": "Avatar emoji or symbol" },
+        "text": { "type": "string", "description": "Comment content" },
+        "createdAt": { "type": "string", "description": "ISO timestamp" },
+        "rating": { "type": "number", "description": "Optional star rating 1-5" }
+      },
+      "required": ["storyId", "user", "text", "createdAt"]
+    },
+    "newsletter_subscribers": {
+      "title": "Subscribers and Followers",
+      "description": "Followers receiving notifications on new chapters and blog posts",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "description": "Email or nickname" },
+        "subscribedAt": { "type": "string", "description": "ISO timestamp" },
+        "targetStoryId": { "type": "string", "description": "Optional story ID followed, or 'all'" }
+      },
+      "required": ["email", "subscribedAt"]
+    },
+    "stories": {
+      "title": "Stories",
+      "description": "Novel stories published by the blog owner",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "originalTitle": { "type": "string" },
+        "author": { "type": "string" },
+        "translator": { "type": "string" },
+        "status": { "type": "string" },
+        "genre": { "type": "array" },
+        "summary": { "type": "string" },
+        "totalChapters": { "type": "number" },
+        "completedChapters": { "type": "number" },
+        "coverImage": { "type": "string" },
+        "colorTheme": { "type": "string" },
+        "hasPassword": { "type": "boolean" },
+        "passwordHint": { "type": "string" },
+        "passwordKey": { "type": "string" },
+        "views": { "type": "number" },
+        "likes": { "type": "number" },
+        "updatedAt": { "type": "string" },
+        "publishedAt": { "type": "string" }
+      },
+      "required": ["title", "author", "status"]
+    },
+    "chapters": {
+      "title": "Chapters",
+      "description": "Story chapters published by the author",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "storyId": { "type": "string" },
+        "chapterNumber": { "type": "number" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "publishedAt": { "type": "string" },
+        "isLocked": { "type": "boolean" },
+        "wordCount": { "type": "number" },
+        "translatorNote": { "type": "string" },
+        "isExtra": { "type": "boolean" },
+        "partType": { "type": "string" }
+      },
+      "required": ["storyId", "chapterNumber", "title", "content"]
+    },
+    "announcements": {
+      "title": "Announcements",
+      "description": "Blog announcements and notice board posts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "tag": { "type": "string" },
+        "content": { "type": "string" },
+        "date": { "type": "string" },
+        "isPinned": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "content"]
+    },
+    "site_config": {
+      "title": "Site Configuration",
+      "description": "Site publishing settings and status",
+      "type": "object",
+      "properties": {
+        "isPublished": { "type": "boolean" },
+        "publishedAt": { "type": "string" },
+        "initialized": { "type": "boolean" }
+      }
+    }
+  },
+  "firestore": {
+    "/site_stats/{statId}": {
+      "schema": "site_stats",
+      "description": "Global statistics like total visits and online users"
+    },
+    "/story_stats/{storyId}": {
+      "schema": "story_stats",
+      "description": "Aggregated stats per story"
+    },
+    "/chapter_stats/{chapterKey}": {
+      "schema": "chapter_stats",
+      "description": "Aggregated stats per chapter"
+    },
+    "/comments/{commentId}": {
+      "schema": "comments",
+      "description": "Reader comments posted across all chapters"
+    },
+    "/newsletter_subscribers/{subId}": {
+      "schema": "newsletter_subscribers",
+      "description": "Blog and story followers"
+    },
+    "/stories/{storyId}": {
+      "schema": "stories",
+      "description": "Stories published by author"
+    },
+    "/chapters/{chapterId}": {
+      "schema": "chapters",
+      "description": "Chapters published by author"
+    },
+    "/announcements/{noticeId}": {
+      "schema": "announcements",
+      "description": "Announcements posted by author"
+    },
+    "/site_config/{configId}": {
+      "schema": "site_config",
+      "description": "Site configuration and publishing state"
+    }
+  }
+}

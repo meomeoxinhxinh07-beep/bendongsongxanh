@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Site-wide statistics: Any reader can view and update visit counters
+    match /site_stats/{statId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Story stats: public read, allow incrementing views, likes, ratings
+    match /story_stats/{storyId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Chapter stats: public read, allow incrementing views and likes
+    match /chapter_stats/{chapterKey} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Reader Comments: public read and write so all visitors can comment and see comments in real time
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if request.resource.data.text is string 
+                    && request.resource.data.text.size() > 0 
+                    && request.resource.data.user is string;
+      allow update, delete: if true;
+    }
+
+    // Newsletter & story followers
+    match /newsletter_subscribers/{subId} {
+      allow read: if true;
+      allow create: if request.resource.data.email is string;
+      allow update, delete: if true;
+    }
+
+    // Stories published by author/translator
+    match /stories/{storyId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Chapters published for stories
+    match /chapters/{chapterId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Announcements and notice board posts
+    match /announcements/{noticeId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Site configuration and publishing status
+    match /site_config/{configId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* Enable class-based dark mode in Tailwind CSS v4 */
+@custom-variant dark (.dark &, &.dark, [data-theme="dark"] &, &[data-theme="dark"]);
+
+@layer base {
+  :root {
+    --font-serif: 'Lora', 'Playfair Display', Georgia, serif;
+    --font-sans: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-serif {
+    font-family: var(--font-serif);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Custom Sakura Illustration Scrollbars - Solid colors, no gradients */
+.sakura-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.sakura-scrollbar::-webkit-scrollbar-track {
+  background: #1c1917;
+  border-radius: 9999px;
+  margin: 4px 0;
+}
+
+.sakura-scrollbar::-webkit-scrollbar-thumb {
+  background: #f43f5e;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  transition: background 0.2s ease;
+}
+
+.sakura-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #e11d48;
+}
+
+/* Emerald Mint Scrollbar for Category/Tags - Solid colors, no gradients */
+.emerald-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.emerald-scrollbar::-webkit-scrollbar-track {
+  background: #1c1917;
+  border-radius: 9999px;
+  margin: 4px 0;
+}
+
+.emerald-scrollbar::-webkit-scrollbar-thumb {
+  background: #10b981;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  transition: background 0.2s ease;
+}
+
+.emerald-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #059669;
+}
+
+/* Dropdown subtle animations */
+@keyframes dropdownSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-dropdown-in {
+  animation: dropdownSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
