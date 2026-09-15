@@ -37,7 +37,7 @@ import { useAuth } from '../lib/authContext';
 
 export const OtherSections: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'diary' | 'music' | 'faq'>('diary');
-  const { user, isAuthor, openAuthModal } = useAuth();
+  const { user, isAuthor, isMainAuthor, isCollaborator, roleBadge, openAuthModal } = useAuth();
 
   // Background Music state
   const [isBgmPlaying, setIsBgmPlaying] = useState(false);
@@ -98,9 +98,13 @@ export const OtherSections: React.FC = () => {
 
   const handleSendConfession = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      openAuthModal();
+      return;
+    }
     if (!guestMessage.trim() || isSubmittingLetter) return;
 
-    const senderName = guestSender.trim() || (user?.displayName || 'Bạn Đọc Ẩn Danh');
+    const senderName = guestSender.trim() || (user.displayName || user.email?.split('@')[0] || 'Bạn Đọc Ẩn Danh');
     setIsSubmittingLetter(true);
     setCreatedSecretCode(null);
 
@@ -110,9 +114,9 @@ export const OtherSections: React.FC = () => {
         content: guestMessage.trim(),
         type: letterType,
         tag: selectedTag,
-        avatar: user?.photoURL || (letterType === 'public' ? '🌸' : '💌'),
-        userEmail: user?.email,
-        userId: user?.uid,
+        avatar: user.photoURL || (letterType === 'public' ? '🌸' : '💌'),
+        userEmail: user.email || undefined,
+        userId: user.uid,
       });
 
       if (letterType === 'private' && result.secretLookupCode) {
@@ -144,8 +148,14 @@ export const OtherSections: React.FC = () => {
   const handleSendAuthorReply = async (letterId: string) => {
     if (!authorReplyText.trim() || isSubmittingReply) return;
     setIsSubmittingReply(true);
+    const replier = isMainAuthor
+      ? 'Mellifluous (Tác giả)'
+      : isCollaborator
+      ? (user?.displayName || 'Cộng sự BQT')
+      : 'Ban Quản Trị';
+
     try {
-      await replyToReaderLetter(letterId, authorReplyText.trim(), 'Mellifluous (Tác giả)');
+      await replyToReaderLetter(letterId, authorReplyText.trim(), replier);
       setAuthorReplyText('');
       setReplyingLetterId(null);
     } catch (err) {
@@ -341,6 +351,49 @@ export const OtherSections: React.FC = () => {
               </div>
             )}
 
+            {/* User Auth Requirement Notice */}
+            {!user ? (
+              <div className="p-4 rounded-2xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-start sm:items-center gap-3 text-xs text-amber-900 dark:text-amber-200">
+                  <Lock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+                  <div className="space-y-0.5">
+                    <p className="font-semibold text-stone-800 dark:text-stone-100">
+                      Yêu cầu đăng nhập để gửi Tâm Tư & Thư Thầm Kín
+                    </p>
+                    <p className="text-stone-600 dark:text-stone-300">
+                      Mục tâm tư, tình cảm cần đăng nhập tài khoản để bảo mật và lưu giữ danh tính của bạn. (Bình luận và phản hồi truyện vẫn hoàn toàn tự do không cần tài khoản).
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  id="confession-login-btn"
+                  onClick={openAuthModal}
+                  className="px-4 py-2 rounded-xl bg-pink-500 hover:bg-pink-600 text-white text-xs font-semibold shrink-0 cursor-pointer shadow-2xs transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <span>Đăng nhập để gửi thư</span>
+                </button>
+              </div>
+            ) : (
+              <div className="px-4 py-2.5 rounded-2xl bg-white/80 dark:bg-stone-900/80 border border-pink-200/80 dark:border-stone-700 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="text-stone-500 dark:text-stone-400">Đang gửi thư với tư cách:</span>
+                  <span className="font-semibold text-stone-800 dark:text-stone-100">
+                    {user.displayName || user.email}
+                  </span>
+                  {roleBadge && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300 border border-pink-200">
+                      {roleBadge}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium hidden sm:inline">
+                  ✓ Đã xác thực
+                </span>
+              </div>
+            )}
+
             <form onSubmit={handleSendConfession} className="space-y-3.5">
               {/* Sender Name & Tag */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -429,19 +482,31 @@ export const OtherSections: React.FC = () => {
                 )}
 
                 <button
-                  type="submit"
+                  type={user ? 'submit' : 'button'}
                   id="submit-letter-btn"
+                  onClick={user ? undefined : openAuthModal}
                   disabled={isSubmittingLetter}
                   className={`px-6 py-2.5 rounded-xl text-white text-xs sm:text-sm font-medium flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer ${
                     isSubmittingLetter ? 'opacity-50 cursor-not-allowed' : ''
                   } ${
-                    letterType === 'public'
+                    !user
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : letterType === 'public'
                       ? 'bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600'
                       : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
                   }`}
                 >
-                  <Send className="w-4 h-4" />
-                  <span>{isSubmittingLetter ? 'Đang gửi thư...' : letterType === 'public' ? 'Gửi thư công khai 💌' : 'Gửi thư thầm kín 🔒'}</span>
+                  {!user ? (
+                    <>
+                      <Lock className="w-4 h-4" />
+                      <span>Đăng nhập để gửi thư</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>{isSubmittingLetter ? 'Đang gửi thư...' : letterType === 'public' ? 'Gửi thư công khai 💌' : 'Gửi thư thầm kín 🔒'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -608,12 +673,12 @@ export const OtherSections: React.FC = () => {
                           "{letter.content}"
                         </p>
 
-                        {/* Mel's Warm Reply if present */}
+                        {/* Mel / Collaborator Reply if present */}
                         {letter.replyFromMel && (
                           <div className="mt-3 p-3 rounded-xl bg-pink-50/80 dark:bg-pink-950/40 border border-pink-100 dark:border-pink-900/40 text-xs space-y-1">
                             <div className="flex items-center gap-1.5 font-semibold text-pink-700 dark:text-pink-300">
                               <span>🌸</span>
-                              <span>Lời nhắn từ Mel:</span>
+                              <span>{letter.repliedBy ? `Hồi đáp từ ${letter.repliedBy}:` : 'Lời nhắn từ Tác giả & BQT:'}</span>
                             </div>
                             <p className="text-stone-600 dark:text-stone-300 font-sans pl-5">
                               {letter.replyFromMel}

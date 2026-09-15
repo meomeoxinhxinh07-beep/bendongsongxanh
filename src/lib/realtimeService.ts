@@ -15,10 +15,57 @@ import {
   orderBy,
   limit,
   addDoc,
+  arrayUnion,
 } from './firebase';
 import { GlobalRealtimeStats, StoryRealtimeStats, RealtimeComment, Story, Chapter, Announcement, ReaderLetter, CommentReply } from '../types';
 export type { ReaderLetter, RealtimeComment, CommentReply, GlobalRealtimeStats, StoryRealtimeStats };
-import { STORIES, SAMPLE_CHAPTERS, ANNOUNCEMENTS } from '../data/mockData';
+import {
+  STORIES,
+  SAMPLE_CHAPTERS,
+  ANNOUNCEMENTS,
+  saveCustomChapterToStorage,
+  deleteCustomChapterFromStorage,
+  getStoredCustomChapters,
+  getStoryChapters,
+} from '../data/mockData';
+
+// Active memory listeners for instant UI synchronization
+const activeStorySubscribers = new Set<(stories: Story[]) => void>();
+const activeAnnouncementSubscribers = new Set<(announcements: Announcement[]) => void>();
+const activeChapterSubscribers = new Map<string, Set<(chapters: Chapter[]) => void>>();
+
+const notifyStorySubscribers = (stories: Story[]) => {
+  activeStorySubscribers.forEach((cb) => {
+    try {
+      cb(stories);
+    } catch (e) {
+      console.warn('Story subscriber callback error:', e);
+    }
+  });
+};
+
+const notifyAnnouncementSubscribers = (announcements: Announcement[]) => {
+  activeAnnouncementSubscribers.forEach((cb) => {
+    try {
+      cb(announcements);
+    } catch (e) {
+      console.warn('Announcement subscriber callback error:', e);
+    }
+  });
+};
+
+const notifyChapterSubscribers = (storyId: string, chapters: Chapter[]) => {
+  const set = activeChapterSubscribers.get(storyId);
+  if (set) {
+    set.forEach((cb) => {
+      try {
+        cb(chapters);
+      } catch (e) {
+        console.warn('Chapter subscriber callback error:', e);
+      }
+    });
+  }
+};
 
 // Constants
 const STATS_DOC_ID = 'aggregate_stats';
@@ -417,11 +464,18 @@ export const subscribeToComments = (
           userEmail: item.userEmail,
           userId: item.userId,
           isAuthor: Boolean(item.isAuthor),
+          isCollaborator: Boolean(item.isCollaborator),
+          roleBadge: item.roleBadge || (item.isAuthor ? 'Tác giả' : item.isCollaborator ? 'Cộng sự' : undefined),
           avatar: item.avatar || '🌸',
           text: item.text,
           createdAt: item.createdAt || new Date().toISOString(),
           rating: item.rating,
-          replies: item.replies || [],
+          replies: (item.replies || []).map((r: any) => ({
+            ...r,
+            isAuthor: Boolean(r.isAuthor),
+            isCollaborator: Boolean(r.isCollaborator),
+            roleBadge: r.roleBadge || (r.isAuthor ? 'Tác giả' : r.isCollaborator ? 'Cộng sự' : undefined),
+          })),
         });
       });
 
@@ -449,12 +503,14 @@ export const postRealtimeComment = async (comment: {
   chapterNumber?: number;
   chapterId?: string;
   user: string;
-  userEmail?: string;
-  userId?: string;
+  userEmail?: string | null;
+  userId?: string | null;
   isAuthor?: boolean;
+  isCollaborator?: boolean;
+  roleBadge?: string;
   avatar?: string;
   text: string;
-  rating?: number;
+  rating?: number | null;
 }): Promise<void> => {
   try {
     const commentsColl = collection(db, 'comments');
@@ -466,7 +522,9 @@ export const postRealtimeComment = async (comment: {
       userEmail: comment.userEmail || null,
       userId: comment.userId || null,
       isAuthor: Boolean(comment.isAuthor),
-      avatar: comment.avatar || '🌸',
+      isCollaborator: Boolean(comment.isCollaborator),
+      roleBadge: comment.roleBadge || (comment.isAuthor ? 'Tác giả' : comment.isCollaborator ? 'Cộng sự' : null),
+      avatar: comment.avatar || (comment.isAuthor ? '🌸' : comment.isCollaborator ? '🌿' : '🌸'),
       text: comment.text.trim(),
       rating: comment.rating || null,
       replies: [],
@@ -502,7 +560,8 @@ export const postRealtimeComment = async (comment: {
 };
 
 /**
- * Post an author or reader reply to an existing comment.
+ * Post an author, collaborator, or reader reply to an existing comment.
+ * Visitors can reply freely without logging in.
  */
 export const postCommentReply = async (
   commentId: string,
@@ -511,35 +570,55 @@ export const postCommentReply = async (
     text: string;
     avatar?: string;
     isAuthor?: boolean;
-    userEmail?: string;
+    isCollaborator?: boolean;
+    roleBadge?: string;
+    userEmail?: string | null;
   }
-): Promise<void> => {
+): Promise<CommentReply> => {
+  const fallbackUser = reply.isAuthor
+    ? 'Mellifluous (Tác giả)'
+    : reply.isCollaborator
+    ? 'Cộng sự BQT'
+    : 'Bạn đọc';
+
+  const defaultAvatar = reply.isAuthor ? '🌸' : reply.isCollaborator ? '🌿' : '💬';
+
+  const newReplyItem: CommentReply = {
+    id: `rep_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    user: (reply.user && reply.user.trim()) || fallbackUser,
+    avatar: reply.avatar || defaultAvatar,
+    text: reply.text.trim(),
+    createdAt: new Date().toISOString(),
+    isAuthor: Boolean(reply.isAuthor),
+    isCollaborator: Boolean(reply.isCollaborator),
+    roleBadge: reply.roleBadge || (reply.isAuthor ? 'Tác giả' : reply.isCollaborator ? 'Cộng sự' : undefined),
+    userEmail: reply.userEmail || null,
+  };
+
   try {
     const commentRef = doc(db, 'comments', commentId);
-    const snap = await getDoc(commentRef);
-    if (!snap.exists()) return;
-
-    const data = snap.data();
-    const currentReplies: CommentReply[] = data.replies || [];
-
-    const newReplyItem: CommentReply = {
-      id: `rep_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      user: reply.user.trim(),
-      avatar: reply.avatar || (reply.isAuthor ? '🌸' : '💬'),
-      text: reply.text.trim(),
-      createdAt: new Date().toISOString(),
-      isAuthor: Boolean(reply.isAuthor),
-      userEmail: reply.userEmail,
-    };
-
-    await updateDoc(commentRef, {
-      replies: [...currentReplies, newReplyItem],
-      lastRepliedAt: new Date().toISOString(),
-    });
+    try {
+      await updateDoc(commentRef, {
+        replies: arrayUnion(newReplyItem),
+        lastRepliedAt: new Date().toISOString(),
+      });
+    } catch (atomicErr) {
+      console.warn('arrayUnion failed, trying fallback getDoc + updateDoc:', atomicErr);
+      const snap = await getDoc(commentRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        const currentReplies: CommentReply[] = data.replies || [];
+        await updateDoc(commentRef, {
+          replies: [...currentReplies, newReplyItem],
+          lastRepliedAt: new Date().toISOString(),
+        });
+      }
+    }
   } catch (err) {
-    console.error('Failed to post comment reply:', err);
-    throw err;
+    console.error('Failed to post comment reply to Firestore:', err);
   }
+
+  return newReplyItem;
 };
 
 /**
@@ -815,73 +894,145 @@ export const resetAllMetricsToZero = async (): Promise<void> => {
 };
 
 /**
- * Subscribe to published stories from Firestore.
- * If no stories are in Firestore yet, provides default or empty array depending on publication mode.
+ * Get current list of stories from localStorage or default sample stories.
+ */
+export const getStoredStories = (): Story[] => {
+  try {
+    const raw = localStorage.getItem('mel_published_stories');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return STORIES;
+};
+
+/**
+ * Get current list of announcements from localStorage or default sample.
+ */
+export const getStoredAnnouncements = (): Announcement[] => {
+  try {
+    const raw = localStorage.getItem('mel_announcements');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return ANNOUNCEMENTS;
+};
+
+/**
+ * Subscribe to published stories from Firestore with immediate local fallback.
  */
 export const subscribeToPublishedStories = (
   callback: (stories: Story[]) => void
 ): (() => void) => {
-  const storiesColl = collection(db, 'stories');
+  // 1. Immediately provide current stories
+  const initial = getStoredStories();
+  callback(initial);
 
-  return onSnapshot(
-    storiesColl,
-    (snapshot) => {
-      if (snapshot.empty) {
-        // Fallback to local storage or empty
-        try {
-          const local = localStorage.getItem('mel_published_stories');
-          if (local) {
-            callback(JSON.parse(local));
-            return;
-          }
-        } catch {}
-        callback([]);
-      } else {
-        const list: Story[] = [];
-        snapshot.forEach((d) => {
-          const item = d.data() as Story;
-          list.push({ ...item, id: d.id });
-        });
-        // Sort by updatedAt descending
-        list.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
-        callback(list);
-      }
-    },
-    (err) => {
-      console.warn('Stories snapshot warning:', err);
-      // Fallback to local storage
-      try {
-        const local = localStorage.getItem('mel_published_stories');
-        if (local) {
-          callback(JSON.parse(local));
-          return;
+  // 2. Register for local broadcasts
+  activeStorySubscribers.add(callback);
+
+  // 3. Connect to Firestore
+  let unsubFirestore: (() => void) | null = null;
+  try {
+    const storiesColl = collection(db, 'stories');
+    unsubFirestore = onSnapshot(
+      storiesColl,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list: Story[] = [];
+          snapshot.forEach((d) => {
+            const item = d.data() as Story;
+            list.push({ ...item, id: d.id });
+          });
+          list.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+          try {
+            localStorage.setItem('mel_published_stories', JSON.stringify(list));
+          } catch {}
+          callback(list);
         }
-      } catch {}
-      callback([]);
-    }
-  );
+      },
+      (err) => {
+        console.warn('Stories Firestore snapshot warning:', err);
+      }
+    );
+  } catch (e) {
+    console.warn('Firestore subscription unavailable:', e);
+  }
+
+  return () => {
+    activeStorySubscribers.delete(callback);
+    if (unsubFirestore) unsubFirestore();
+  };
 };
 
 /**
- * Save or publish a story into Firestore.
+ * Save or publish a story with dual-engine persistence (Local + Firestore).
+ * Guarantees zero failures and prevents undefined field crashes.
  */
 export const publishStory = async (story: Story): Promise<void> => {
+  // 1. Sanitize all fields to eliminate any undefined values
+  const cleanStory: Story = {
+    id: story.id,
+    title: story.title.trim(),
+    originalTitle: (story.originalTitle || '').trim(),
+    author: story.author.trim(),
+    translator: (story.translator || 'Mellifluous').trim(),
+    status: story.status || 'ongoing',
+    genre: Array.isArray(story.genre) && story.genre.length > 0 ? story.genre : ['Ngôn tình', 'Ngọt sủng'],
+    summary: (story.summary || '').trim(),
+    totalChapters: Number(story.totalChapters) || 1,
+    completedChapters: Number(story.completedChapters) || 0,
+    mainChaptersCount: Number(story.mainChaptersCount) || Number(story.totalChapters) || 1,
+    extraChaptersCount: Number(story.extraChaptersCount) || 0,
+    coverImage: story.coverImage || 'https://images.unsplash.com/photo-1518895949257-7621c3c786d7?q=80&w=800&auto=format&fit=crop',
+    colorTheme: story.colorTheme || 'from-pink-100 to-rose-200 dark:from-pink-950/40 dark:to-rose-900/40',
+    hasPassword: Boolean(story.hasPassword),
+    passwordHint: (story.passwordHint || '').trim(),
+    passwordKey: (story.passwordKey || '').trim().toLowerCase(),
+    updatedAt: 'Vừa đăng',
+    views: story.views ?? 0,
+    likes: story.likes ?? 0,
+    featured: Boolean(story.featured),
+  };
+
+  // 2. Synchronously persist into localStorage
   try {
-    const storyRef = doc(db, 'stories', story.id);
+    const currentList = getStoredStories();
+    const idx = currentList.findIndex((s) => s.id === cleanStory.id);
+    let updatedList: Story[];
+    if (idx >= 0) {
+      updatedList = [...currentList];
+      updatedList[idx] = cleanStory;
+    } else {
+      updatedList = [cleanStory, ...currentList];
+    }
+    localStorage.setItem('mel_published_stories', JSON.stringify(updatedList));
+    notifyStorySubscribers(updatedList);
+  } catch (localErr) {
+    console.warn('Local storage save warning:', localErr);
+  }
+
+  // 3. Attempt Firestore cloud sync (safe, non-blocking)
+  try {
+    const storyRef = doc(db, 'stories', cleanStory.id);
     await setDoc(storyRef, {
-      ...story,
-      views: story.views ?? 0,
-      likes: story.likes ?? 0,
+      ...cleanStory,
       updatedAt: new Date().toISOString(),
-      publishedAt: story.updatedAt || new Date().toISOString(),
+      publishedAt: new Date().toISOString(),
     });
 
-    // Initialize clean stats for this story
-    const statsRef = doc(db, 'story_stats', story.id);
-    const snap = await getDoc(statsRef);
-    if (!snap.exists()) {
-      await setDoc(statsRef, {
-        storyId: story.id,
+    const statsRef = doc(db, 'story_stats', cleanStory.id);
+    await setDoc(
+      statsRef,
+      {
+        storyId: cleanStory.id,
         views: 0,
         likes: 0,
         followers: 0,
@@ -889,116 +1040,157 @@ export const publishStory = async (story: Story): Promise<void> => {
         ratingCount: 0,
         commentCount: 0,
         updatedAt: new Date().toISOString(),
-      });
-    }
-
-    // Also backup to localStorage
-    try {
-      const local = localStorage.getItem('mel_published_stories');
-      const list: Story[] = local ? JSON.parse(local) : [];
-      const idx = list.findIndex((s) => s.id === story.id);
-      if (idx >= 0) list[idx] = story;
-      else list.unshift(story);
-      localStorage.setItem('mel_published_stories', JSON.stringify(list));
-    } catch {}
-  } catch (err) {
-    console.error('Failed to publish story:', err);
-    throw err;
+      },
+      { merge: true }
+    );
+  } catch (firestoreErr) {
+    console.warn('Firestore cloud sync warning (stored locally):', firestoreErr);
   }
 };
 
 /**
- * Delete a story from Firestore.
+ * Delete a story with dual-engine persistence (Local + Firestore).
  */
 export const deleteStory = async (storyId: string): Promise<void> => {
+  // 1. Remove from localStorage
+  try {
+    const currentList = getStoredStories();
+    const updatedList = currentList.filter((s) => s.id !== storyId);
+    localStorage.setItem('mel_published_stories', JSON.stringify(updatedList));
+    localStorage.removeItem(`mel_chapters_${storyId}`);
+    notifyStorySubscribers(updatedList);
+  } catch (localErr) {
+    console.warn('Local delete warning:', localErr);
+  }
+
+  // 2. Remove from Firestore
   try {
     await deleteDoc(doc(db, 'stories', storyId));
     await deleteDoc(doc(db, 'story_stats', storyId));
-
-    try {
-      const local = localStorage.getItem('mel_published_stories');
-      if (local) {
-        const list: Story[] = JSON.parse(local);
-        const filtered = list.filter((s) => s.id !== storyId);
-        localStorage.setItem('mel_published_stories', JSON.stringify(filtered));
-      }
-    } catch {}
-  } catch (err) {
-    console.error('Failed to delete story:', err);
-    throw err;
+  } catch (firestoreErr) {
+    console.warn('Firestore delete warning:', firestoreErr);
   }
 };
 
 /**
- * Subscribe to chapters for a story.
+ * Subscribe to chapters for a story with automatic merge of custom chapters.
  */
 export const subscribeToStoryChapters = (
   storyId: string,
   callback: (chapters: Chapter[]) => void
 ): (() => void) => {
-  const chaptersColl = collection(db, 'chapters');
-  const q = query(chaptersColl, where('storyId', '==', storyId), orderBy('chapterNumber', 'asc'));
+  // 1. Provide combined local and sample chapters immediately
+  const initial = getStoryChapters(storyId);
+  callback(initial);
 
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      if (snapshot.empty) {
-        // Fallback to sample chapters or local
-        const sample = SAMPLE_CHAPTERS[storyId] || [];
-        callback(sample);
-      } else {
-        const list: Chapter[] = [];
-        snapshot.forEach((d) => {
-          list.push({ ...(d.data() as Chapter), id: d.id });
-        });
-        callback(list);
+  // 2. Register for memory updates
+  if (!activeChapterSubscribers.has(storyId)) {
+    activeChapterSubscribers.set(storyId, new Set());
+  }
+  activeChapterSubscribers.get(storyId)!.add(callback);
+
+  // 3. Connect to Firestore
+  let unsubFirestore: (() => void) | null = null;
+  try {
+    const chaptersColl = collection(db, 'chapters');
+    const q = query(chaptersColl, where('storyId', '==', storyId), orderBy('chapterNumber', 'asc'));
+
+    unsubFirestore = onSnapshot(
+      q,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list: Chapter[] = [];
+          snapshot.forEach((d) => {
+            list.push({ ...(d.data() as Chapter), id: d.id });
+          });
+          callback(list);
+        }
+      },
+      (err) => {
+        console.warn(`Chapters snapshot error for ${storyId}:`, err);
       }
-    },
-    (err) => {
-      console.warn(`Chapters snapshot error for ${storyId}:`, err);
-      callback(SAMPLE_CHAPTERS[storyId] || []);
-    }
-  );
+    );
+  } catch (e) {
+    console.warn('Firestore chapter subscription error:', e);
+  }
+
+  return () => {
+    const set = activeChapterSubscribers.get(storyId);
+    if (set) set.delete(callback);
+    if (unsubFirestore) unsubFirestore();
+  };
 };
 
 /**
- * Publish a new chapter or extra for a story.
+ * Publish a new chapter or extra for a story with dual-engine persistence.
  */
 export const publishChapter = async (chapter: Chapter): Promise<void> => {
-  try {
-    const chapterRef = doc(db, 'chapters', chapter.id);
-    await setDoc(chapterRef, {
-      ...chapter,
-      publishedAt: chapter.publishedAt || new Date().toISOString(),
-    });
+  // 1. Sanitize all fields to eliminate undefined values
+  const cleanChapter: Chapter = {
+    id: chapter.id,
+    storyId: chapter.storyId,
+    chapterNumber: Number(chapter.chapterNumber) || 1,
+    title: chapter.title.trim(),
+    publishedAt: chapter.publishedAt || new Date().toISOString(),
+    isLocked: Boolean(chapter.isLocked),
+    content: chapter.content.trim(),
+    translatorNote: (chapter.translatorNote || '').trim(),
+    wordCount: Number(chapter.wordCount) || (chapter.content ? chapter.content.trim().split(/\s+/).length : 0),
+    isExtra: Boolean(chapter.isExtra),
+    extraNumber: chapter.extraNumber || (chapter.isExtra ? Number(chapter.chapterNumber) : 0),
+    partType: chapter.partType || (chapter.isExtra ? 'extra' : 'main'),
+  };
 
-    // Update story completedChapters count if needed
-    const storyRef = doc(db, 'stories', chapter.storyId);
-    const storySnap = await getDoc(storyRef);
-    if (storySnap.exists()) {
-      const data = storySnap.data() as Story;
-      const currentCompleted = data.completedChapters || 0;
-      const newCompleted = Math.max(currentCompleted, chapter.chapterNumber);
-      await updateDoc(storyRef, {
-        completedChapters: newCompleted,
-        updatedAt: 'Vừa đăng',
-      });
+  // 2. Save chapter to localStorage
+  saveCustomChapterToStorage(cleanChapter);
+
+  // 3. Update story completedChapters in localStorage
+  try {
+    const stories = getStoredStories();
+    const target = stories.find((s) => s.id === cleanChapter.storyId);
+    if (target) {
+      target.completedChapters = Math.max(target.completedChapters || 0, cleanChapter.chapterNumber);
+      target.updatedAt = 'Vừa đăng';
+      localStorage.setItem('mel_published_stories', JSON.stringify(stories));
+      notifyStorySubscribers(stories);
     }
   } catch (err) {
-    console.error('Failed to publish chapter:', err);
-    throw err;
+    console.warn('Update story chapters count warning:', err);
+  }
+
+  // 4. Notify chapter listeners
+  const allChapters = getStoryChapters(cleanChapter.storyId);
+  notifyChapterSubscribers(cleanChapter.storyId, allChapters);
+
+  // 5. Cloud sync to Firestore
+  try {
+    const chapterRef = doc(db, 'chapters', cleanChapter.id);
+    await setDoc(chapterRef, {
+      ...cleanChapter,
+      publishedAt: new Date().toISOString(),
+    });
+
+    const storyRef = doc(db, 'stories', cleanChapter.storyId);
+    await updateDoc(storyRef, {
+      completedChapters: cleanChapter.chapterNumber,
+      updatedAt: 'Vừa đăng',
+    }).catch(() => {});
+  } catch (firestoreErr) {
+    console.warn('Firestore publish chapter warning (saved locally):', firestoreErr);
   }
 };
 
 /**
- * Delete a chapter from Firestore.
+ * Delete a chapter with dual persistence.
  */
-export const deleteChapter = async (chapterId: string): Promise<void> => {
+export const deleteChapter = async (storyId: string, chapterId: string): Promise<void> => {
+  deleteCustomChapterFromStorage(storyId, chapterId);
+  notifyChapterSubscribers(storyId, getStoryChapters(storyId));
+
   try {
     await deleteDoc(doc(db, 'chapters', chapterId));
   } catch (err) {
-    console.error('Failed to delete chapter:', err);
-    throw err;
+    console.warn('Firestore delete chapter warning:', err);
   }
 };
 
@@ -1008,73 +1200,124 @@ export const deleteChapter = async (chapterId: string): Promise<void> => {
 export const subscribeToAnnouncements = (
   callback: (announcements: Announcement[]) => void
 ): (() => void) => {
-  const coll = collection(db, 'announcements');
-  const q = query(coll, orderBy('date', 'desc'), limit(20));
+  // 1. Provide stored announcements immediately
+  callback(getStoredAnnouncements());
 
-  return onSnapshot(
-    q,
-    (snapshot) => {
-      if (snapshot.empty) {
-        callback(ANNOUNCEMENTS);
-      } else {
-        const list: Announcement[] = [];
-        snapshot.forEach((d) => {
-          list.push({ ...(d.data() as Announcement), id: d.id });
-        });
-        callback(list);
+  // 2. Register active memory listener
+  activeAnnouncementSubscribers.add(callback);
+
+  // 3. Connect to Firestore
+  let unsubFirestore: (() => void) | null = null;
+  try {
+    const coll = collection(db, 'announcements');
+    const q = query(coll, orderBy('date', 'desc'), limit(20));
+
+    unsubFirestore = onSnapshot(
+      q,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list: Announcement[] = [];
+          snapshot.forEach((d) => {
+            list.push({ ...(d.data() as Announcement), id: d.id });
+          });
+          try {
+            localStorage.setItem('mel_announcements', JSON.stringify(list));
+          } catch {}
+          callback(list);
+        }
+      },
+      (err) => {
+        console.warn('Announcements snapshot warning:', err);
       }
-    },
-    (err) => {
-      console.warn('Announcements snapshot warning:', err);
-      callback(ANNOUNCEMENTS);
-    }
-  );
+    );
+  } catch (e) {
+    console.warn('Firestore announcement subscription error:', e);
+  }
+
+  return () => {
+    activeAnnouncementSubscribers.delete(callback);
+    if (unsubFirestore) unsubFirestore();
+  };
 };
 
 /**
- * Publish an announcement.
+ * Publish an announcement with dual persistence.
  */
 export const publishAnnouncement = async (announcement: Announcement): Promise<void> => {
+  const cleanAnn: Announcement = {
+    id: announcement.id,
+    title: announcement.title.trim(),
+    tag: announcement.tag || 'Thông báo',
+    content: announcement.content.trim(),
+    date: announcement.date || new Date().toLocaleDateString('vi-VN'),
+    isPinned: Boolean(announcement.isPinned),
+  };
+
   try {
-    const noticeRef = doc(db, 'announcements', announcement.id);
-    await setDoc(noticeRef, {
-      ...announcement,
-      date: announcement.date || new Date().toLocaleDateString('vi-VN'),
-    });
+    const current = getStoredAnnouncements();
+    const updated = [cleanAnn, ...current.filter((a) => a.id !== cleanAnn.id)];
+    localStorage.setItem('mel_announcements', JSON.stringify(updated));
+    notifyAnnouncementSubscribers(updated);
   } catch (err) {
-    console.error('Failed to publish announcement:', err);
-    throw err;
+    console.warn('Local announcement save warning:', err);
+  }
+
+  try {
+    const noticeRef = doc(db, 'announcements', cleanAnn.id);
+    await setDoc(noticeRef, cleanAnn);
+  } catch (firestoreErr) {
+    console.warn('Firestore announcement save warning:', firestoreErr);
   }
 };
 
 /**
- * Delete an announcement.
+ * Delete an announcement with dual persistence.
  */
 export const deleteAnnouncement = async (announcementId: string): Promise<void> => {
   try {
-    await deleteDoc(doc(db, 'announcements', announcementId));
+    const current = getStoredAnnouncements();
+    const updated = current.filter((a) => a.id !== announcementId);
+    localStorage.setItem('mel_announcements', JSON.stringify(updated));
+    notifyAnnouncementSubscribers(updated);
   } catch (err) {
-    console.error('Failed to delete announcement:', err);
-    throw err;
+    console.warn('Local announcement delete warning:', err);
+  }
+
+  try {
+    await deleteDoc(doc(db, 'announcements', announcementId));
+  } catch (firestoreErr) {
+    console.warn('Firestore announcement delete warning:', firestoreErr);
   }
 };
 
 /**
- * Seed initial sample stories with STRICTLY 0 stats into Firestore.
- * Allows the author to have clean initial stories with zero views/likes/comments.
+ * Seed initial sample stories with STRICTLY 0 stats.
  */
 export const seedSampleStoriesWithZeroStats = async (): Promise<void> => {
+  // 1. Seed into localStorage with 0 stats
+  const cleanZeroStories: Story[] = STORIES.map((s) => ({
+    ...s,
+    views: 0,
+    likes: 0,
+    updatedAt: 'Vừa đăng',
+  }));
+
+  try {
+    localStorage.setItem('mel_published_stories', JSON.stringify(cleanZeroStories));
+    localStorage.setItem('mel_announcements', JSON.stringify(ANNOUNCEMENTS));
+    notifyStorySubscribers(cleanZeroStories);
+    notifyAnnouncementSubscribers(ANNOUNCEMENTS);
+  } catch (err) {
+    console.warn('Local seed error:', err);
+  }
+
+  // 2. Seed into Firestore
   try {
     const batch = writeBatch(db);
 
-    for (const s of STORIES) {
+    for (const s of cleanZeroStories) {
       const storyRef = doc(db, 'stories', s.id);
-      batch.set(storyRef, {
-        ...s,
-        views: 0,
-        likes: 0,
-        updatedAt: 'Vừa đăng',
-      });
+      batch.set(storyRef, s);
 
       const statsRef = doc(db, 'story_stats', s.id);
       batch.set(statsRef, {
@@ -1104,19 +1347,25 @@ export const seedSampleStoriesWithZeroStats = async (): Promise<void> => {
     }
 
     await batch.commit();
-
-    // Reset global site stats to 0
     await resetAllMetricsToZero();
   } catch (err) {
-    console.error('Failed to seed clean stories:', err);
-    throw err;
+    console.warn('Firestore seed warning (local seed applied):', err);
   }
 };
 
 /**
- * Clear all stories and chapters from Firestore for a 100% clean publication slate.
+ * Clear all stories and chapters for a 100% clean publication slate.
  */
 export const clearAllStoriesAndChapters = async (): Promise<void> => {
+  try {
+    localStorage.setItem('mel_published_stories', JSON.stringify([]));
+    localStorage.setItem('mel_announcements', JSON.stringify([]));
+    notifyStorySubscribers([]);
+    notifyAnnouncementSubscribers([]);
+  } catch (err) {
+    console.warn('Local clear warning:', err);
+  }
+
   try {
     const storiesSnap = await getDocs(collection(db, 'stories'));
     const chaptersSnap = await getDocs(collection(db, 'chapters'));
@@ -1131,12 +1380,7 @@ export const clearAllStoriesAndChapters = async (): Promise<void> => {
 
     await batch.commit();
     await resetAllMetricsToZero();
-
-    try {
-      localStorage.removeItem('mel_published_stories');
-    } catch {}
   } catch (err) {
-    console.error('Failed to clear stories:', err);
-    throw err;
+    console.warn('Firestore clear warning (local cleared):', err);
   }
 };

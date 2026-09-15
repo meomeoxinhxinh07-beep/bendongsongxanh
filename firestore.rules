@@ -19,12 +19,15 @@ service cloud.firestore {
       allow write: if true;
     }
 
-    // Reader Comments: public read and write so all visitors can comment and see comments in real time
+    // Reader Comments: public read and write so all visitors can comment and reply in real time
     match /comments/{commentId} {
+      allow read, write: if true;
+    }
+
+    // Reader Letters & Confessions (Hòm thư tâm sự & Tình cảm): Yêu cầu đăng nhập để gửi
+    match /reader_letters/{letterId} {
       allow read: if true;
-      allow create: if request.resource.data.text is string 
-                    && request.resource.data.text.size() > 0 
-                    && request.resource.data.user is string;
+      allow create: if request.auth != null;
       allow update, delete: if true;
     }
 

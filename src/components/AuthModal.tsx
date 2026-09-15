@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth, AUTHOR_EMAILS } from '../lib/authContext';
+import { useAuth } from '../lib/authContext';
 import {
   X,
   Sparkles,
@@ -36,7 +36,6 @@ export const AuthModal: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showAuthorPicker, setShowAuthorPicker] = useState(false);
 
   if (!isAuthModalOpen) return null;
 
@@ -328,48 +327,17 @@ export const AuthModal: React.FC = () => {
                     <div className="flex-grow border-t border-stone-200 dark:border-stone-800"></div>
                   </div>
 
-                  {/* Fast Author Switch & Verification Tool */}
-                  <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/80 dark:border-stone-700/80 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-800 dark:text-stone-200">
-                        <ShieldCheck className="w-4 h-4 text-pink-500" />
-                        <span>Danh sách Gmail Tác giả & Cộng sự được cấp quyền</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowAuthorPicker(!showAuthorPicker)}
-                        className="text-[11px] text-pink-600 dark:text-pink-400 hover:underline cursor-pointer"
-                      >
-                        {showAuthorPicker ? 'Thu gọn' : 'Xem danh sách'}
-                      </button>
+                  {/* Automated Author & Collaborator Role Activation Note */}
+                  <div className="p-3.5 rounded-2xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200/80 dark:border-stone-700/80 flex items-start gap-2.5 text-xs text-stone-600 dark:text-stone-300">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="font-semibold text-stone-800 dark:text-stone-200">
+                        Cấp quyền tự động & Bảo mật danh tính
+                      </p>
+                      <p className="text-[11.5px] leading-relaxed text-stone-500 dark:text-stone-400">
+                        Tác giả và Ban quản trị chỉ cần đăng nhập bằng tài khoản Gmail của mình. Hệ thống sẽ tự động xác thực và kích hoạt toàn quyền Tác giả & Quản trị viên mà không công khai danh sách tài khoản.
+                      </p>
                     </div>
-
-                    <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-tight">
-                      Khi đăng nhập đúng tài khoản Gmail tác giả, blog sẽ tự động cấp quyền Quản trị viên/Tác giả. Bạn cũng có thể nhấp trực tiếp vào email bên dưới để kiểm tra giao diện Quản trị:
-                    </p>
-
-                    {showAuthorPicker && (
-                      <div className="grid grid-cols-1 gap-1.5 pt-2 max-h-48 overflow-y-auto">
-                        {AUTHOR_EMAILS.map((authEmail) => (
-                          <button
-                            key={authEmail}
-                            type="button"
-                            onClick={() => quickAuthorLogin(authEmail)}
-                            className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-left hover:border-pink-300 dark:hover:border-pink-800 transition-colors group cursor-pointer text-xs"
-                          >
-                            <div className="flex items-center gap-2 truncate">
-                              <span className="text-xs">🌸</span>
-                              <span className="font-mono text-stone-700 dark:text-stone-200 group-hover:text-pink-600 dark:group-hover:text-pink-300 truncate">
-                                {authEmail}
-                              </span>
-                            </div>
-                            <span className="text-[10px] text-pink-600 dark:text-pink-400 font-semibold shrink-0 ml-2">
-                              Kích hoạt ➜
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
               )}

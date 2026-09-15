@@ -13,6 +13,8 @@ import {
 
 // Danh sách email chính thức của Tác giả & Các Cộng sự quản trị viên do khách hàng cung cấp
 export const AUTHOR_EMAILS: string[] = [
+  'meomeoxinhxinh07@gmail.com',
+  'nhatlinhpham010194@gmail.com',
   'maianhpham927@gmail.com',
   'duongtieuvi102@gmail.com',
   'nguyenplinh1002@gmail.com',
@@ -20,7 +22,6 @@ export const AUTHOR_EMAILS: string[] = [
   'luclamly920@gmail.com',
   'uongthienyenvi123@gmail.com',
   'vivi60810@gmail.com',
-  'nhatlinhpham010194@gmail.com',
 ].map((email) => email.toLowerCase().trim());
 
 export interface AppUser {
@@ -29,14 +30,19 @@ export interface AppUser {
   displayName: string | null;
   photoURL: string | null;
   isAuthor: boolean;
-  role: 'author' | 'reader';
+  isMainAuthor: boolean;
+  isCollaborator: boolean;
+  role: 'author' | 'collaborator' | 'reader';
   roleTitle: string;
+  roleBadge: string;
 }
 
 interface AuthContextType {
   user: AppUser | null;
   loading: boolean;
   isAuthor: boolean;
+  isMainAuthor: boolean;
+  isCollaborator: boolean;
   isAuthModalOpen: boolean;
   openAuthModal: () => void;
   closeAuthModal: () => void;
@@ -67,23 +73,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const emailLower = (fbUser.email || '').toLowerCase().trim();
     const isAuthor = AUTHOR_EMAILS.includes(emailLower);
 
+    const isMainAuthor = isAuthor && (
+      emailLower === 'meomeoxinhxinh07@gmail.com' ||
+      emailLower === 'nhatlinhpham010194@gmail.com' ||
+      emailLower === 'maianhpham927@gmail.com'
+    );
+    const isCollaborator = isAuthor && !isMainAuthor;
+
     let roleTitle = 'Độc giả yêu mến';
-    if (isAuthor) {
-      if (emailLower === 'nhatlinhpham010194@gmail.com' || emailLower === 'maianhpham927@gmail.com') {
-        roleTitle = 'Tác giả • Mellifluous';
-      } else {
-        roleTitle = 'Cộng sự • Ban quản trị';
-      }
+    let roleBadge = 'Độc giả';
+    let role: 'author' | 'collaborator' | 'reader' = 'reader';
+
+    if (isMainAuthor) {
+      roleTitle = 'Tác giả • Mellifluous';
+      roleBadge = 'Tác giả';
+      role = 'author';
+    } else if (isCollaborator) {
+      roleTitle = 'Cộng sự • Ban quản trị';
+      roleBadge = 'Cộng sự';
+      role = 'collaborator';
     }
 
     return {
       uid: fbUser.uid,
       email: fbUser.email || null,
-      displayName: fbUser.displayName || (isAuthor ? 'Mellifluous' : 'Độc giả giấu tên'),
+      displayName: fbUser.displayName || (isMainAuthor ? 'Mellifluous (Tác giả)' : isCollaborator ? 'Cộng sự BQT' : 'Độc giả giấu tên'),
       photoURL: fbUser.photoURL || null,
       isAuthor,
-      role: isAuthor ? 'author' : 'reader',
+      isMainAuthor,
+      isCollaborator,
+      role,
       roleTitle,
+      roleBadge,
     };
   };
 
@@ -180,16 +201,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Quick switch / Direct sign-in for Author & Collaborators (ideal for testing in sandboxed iframe or direct access)
   const quickAuthorLogin = (authorEmail: string) => {
     const cleanEmail = authorEmail.toLowerCase().trim();
+    const isMain =
+      cleanEmail === 'meomeoxinhxinh07@gmail.com' ||
+      cleanEmail.split('@')[0] === 'meomeoxinhxinh07' ||
+      cleanEmail.split('@')[0] === 'nhatlinhpham010194' ||
+      cleanEmail.split('@')[0] === 'maianhpham927';
     const appUser: AppUser = {
       uid: `author_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
       email: cleanEmail,
-      displayName: cleanEmail.split('@')[0] === 'nhatlinhpham010194' || cleanEmail.split('@')[0] === 'maianhpham927'
-        ? 'Mellifluous (Tác giả chính)'
-        : `Cộng sự (${cleanEmail.split('@')[0]})`,
+      displayName: isMain ? 'Mellifluous (Tác giả chính)' : `Cộng sự (${cleanEmail.split('@')[0]})`,
       photoURL: null,
       isAuthor: true,
-      role: 'author',
-      roleTitle: 'Tác giả & Quản trị viên',
+      isMainAuthor: isMain,
+      isCollaborator: !isMain,
+      role: isMain ? 'author' : 'collaborator',
+      roleTitle: isMain ? 'Tác giả • Mellifluous' : 'Cộng sự • Ban quản trị',
+      roleBadge: isMain ? 'Tác giả' : 'Cộng sự',
     };
     setUser(appUser);
     try {
@@ -207,8 +234,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       displayName: trimmed,
       photoURL: null,
       isAuthor: false,
+      isMainAuthor: false,
+      isCollaborator: false,
       role: 'reader',
       roleTitle: 'Độc giả yêu mến',
+      roleBadge: 'Độc giả',
     };
     setUser(appUser);
     try {
@@ -234,6 +264,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         user,
         loading,
         isAuthor: Boolean(user?.isAuthor),
+        isMainAuthor: Boolean(user?.isMainAuthor),
+        isCollaborator: Boolean(user?.isCollaborator),
         isAuthModalOpen,
         openAuthModal,
         closeAuthModal,

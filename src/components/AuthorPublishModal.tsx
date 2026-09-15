@@ -139,6 +139,10 @@ export const AuthorPublishModal: React.FC<AuthorPublishModalProps> = ({
   const [annContent, setAnnContent] = useState('');
   const [annIsPinned, setAnnIsPinned] = useState(true);
 
+  // Safe inline confirmation states (prevents iframe alert/confirm blocking)
+  const [storyToDelete, setStoryToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [letterToDelete, setLetterToDelete] = useState<string | null>(null);
+
   if (!isOpen) return null;
 
   // Gatekeeper: Only authorized authors and collaborators can access Studio
@@ -238,7 +242,7 @@ export const AuthorPublishModal: React.FC<AuthorPublishModalProps> = ({
       const newStory: Story = {
         id: generatedId,
         title: storyTitle.trim(),
-        originalTitle: storyOriginalTitle.trim() || undefined,
+        originalTitle: storyOriginalTitle.trim(),
         author: storyAuthor.trim(),
         translator: storyTranslator.trim() || 'Mellifluous',
         status: storyStatus,
@@ -248,7 +252,7 @@ export const AuthorPublishModal: React.FC<AuthorPublishModalProps> = ({
         completedChapters: 0,
         mainChaptersCount: Number(totalChapters) || 1,
         extraChaptersCount: 0,
-        coverImage: storyCover,
+        coverImage: storyCover || PRESET_COVERS[0].url,
         colorTheme: 'from-pink-100 to-rose-200 dark:from-pink-950/40 dark:to-rose-900/40',
         hasPassword,
         passwordHint: hasPassword ? passwordHint.trim() : '',
@@ -282,25 +286,27 @@ export const AuthorPublishModal: React.FC<AuthorPublishModalProps> = ({
   // 5. Publish New Chapter
   const handleCreateChapter = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetStoryId || !chapterTitle.trim() || !chapterContent.trim()) {
+    const effectiveStoryId = targetStoryId || (stories.length > 0 ? stories[0].id : '');
+    if (!effectiveStoryId || !chapterTitle.trim() || !chapterContent.trim()) {
       showFeedback('error', 'Vui lòng chọn truyện, nhập tiêu đề và nội dung chương.');
       return;
     }
 
     setIsProcessing(true);
     try {
-      const chapterId = `${targetStoryId}-${partType === 'extra' ? 'extra' : 'c'}${chapterNumber}`;
+      const chapterId = `${effectiveStoryId}-${partType === 'extra' ? 'extra' : 'c'}${chapterNumber}`;
       const newChapter: Chapter = {
         id: chapterId,
-        storyId: targetStoryId,
-        chapterNumber: Number(chapterNumber),
+        storyId: effectiveStoryId,
+        chapterNumber: Number(chapterNumber) || 1,
         title: chapterTitle.trim(),
         publishedAt: new Date().toISOString(),
         isLocked: isChapterLocked,
         content: chapterContent.trim(),
-        translatorNote: translatorNote.trim() || undefined,
+        translatorNote: translatorNote.trim(),
         wordCount: chapterContent.trim().split(/\s+/).length,
         isExtra: partType === 'extra',
+        extraNumber: partType === 'extra' ? Number(chapterNumber) : 0,
         partType,
       };
 
@@ -355,11 +361,11 @@ export const AuthorPublishModal: React.FC<AuthorPublishModalProps> = ({
 
   // 7. Delete story
   const handleDeleteStory = async (id: string, title: string) => {
-    if (!window.confirm(`Xác nhận xóa bộ truyện "${title}"?`)) return;
     setIsProcessing(true);
     try {
       await deleteStory(id);
       showFeedback('success', `Đã xóa truyện "${title}".`);
+      setStoryToDelete(null);
       if (onStoriesUpdated) onStoriesUpdated();
     } catch (err) {
       showFeedback('error', 'Lỗi khi xóa truyện.');
@@ -389,10 +395,10 @@ export const AuthorPublishModal: React.FC<AuthorPublishModalProps> = ({
   };
 
   const handleDeleteLetterFromModal = async (letterId: string) => {
-    if (!window.confirm('Xác nhận xóa bức thư này khỏi hệ thống?')) return;
     try {
       await deleteReaderLetter(letterId);
       showFeedback('success', 'Đã xóa bức thư thành công.');
+      setLetterToDelete(null);
     } catch (err) {
       showFeedback('error', 'Lỗi khi xóa bức thư.');
     }
@@ -1064,14 +1070,34 @@ export const AuthorPublishModal: React.FC<AuthorPublishModalProps> = ({
                             </div>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteLetterFromModal(item.id)}
-                            className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-stone-700 transition-colors cursor-pointer"
-                            title="Xóa thư"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {letterToDelete === item.id ? (
+                            <div className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/60 p-1 rounded-lg border border-rose-200">
+                              <span className="text-[10px] text-rose-700 dark:text-rose-300 font-medium px-1">Xóa thư?</span>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteLetterFromModal(item.id)}
+                                className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500 text-white hover:bg-rose-600"
+                              >
+                                Xóa
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setLetterToDelete(null)}
+                                className="px-1.5 py-0.5 rounded text-[10px] text-stone-500 hover:bg-stone-200"
+                              >
+                                Hủy
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setLetterToDelete(item.id)}
+                              className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-stone-700 transition-colors cursor-pointer"
+                              title="Xóa thư"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
 
                         {/* Letter Content */}
@@ -1222,14 +1248,34 @@ export const AuthorPublishModal: React.FC<AuthorPublishModalProps> = ({
                           + Thêm chương
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteStory(s.id, s.title)}
-                          className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
-                          title="Xóa truyện này"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {storyToDelete?.id === s.id ? (
+                          <div className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/60 p-1 rounded-lg border border-rose-200 dark:border-rose-800">
+                            <span className="text-[10px] text-rose-700 dark:text-rose-300 font-medium px-1">Xóa truyện?</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteStory(s.id, s.title)}
+                              className="px-2 py-1 rounded text-[10px] font-bold bg-rose-500 text-white hover:bg-rose-600 transition-colors"
+                            >
+                              Xóa ngay
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setStoryToDelete(null)}
+                              className="px-1.5 py-1 rounded text-[10px] text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                            >
+                              Hủy
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setStoryToDelete({ id: s.id, title: s.title })}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                            title="Xóa truyện này"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

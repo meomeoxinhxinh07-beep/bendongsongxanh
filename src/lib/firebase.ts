@@ -18,6 +18,7 @@ import {
   getDocs,
   writeBatch,
   serverTimestamp,
+  arrayUnion,
   type Firestore,
 } from 'firebase/firestore';
 import {
@@ -77,6 +78,7 @@ export {
   limit,
   addDoc,
   serverTimestamp,
+  arrayUnion,
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,

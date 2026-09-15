@@ -751,80 +751,133 @@ Giang Thần xuất hiện với chiếc áo sơ mi trắng tinh khôi, trên ta
 // Aliases
 SAMPLE_CHAPTERS['anh-dao-5cm'] = SAMPLE_CHAPTERS['anh-dao-nam-centimet'];
 
+/**
+ * Get stored custom chapters from localStorage for a specific story.
+ */
+export const getStoredCustomChapters = (storyId: string): Chapter[] => {
+  try {
+    const raw = localStorage.getItem(`mel_chapters_${storyId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+};
+
+/**
+ * Save a custom chapter into localStorage.
+ */
+export const saveCustomChapterToStorage = (chapter: Chapter): void => {
+  try {
+    const list = getStoredCustomChapters(chapter.storyId);
+    const existingIndex = list.findIndex((c) => c.id === chapter.id || c.chapterNumber === chapter.chapterNumber);
+    if (existingIndex >= 0) {
+      list[existingIndex] = chapter;
+    } else {
+      list.push(chapter);
+    }
+    // Sort by chapterNumber ascending
+    list.sort((a, b) => a.chapterNumber - b.chapterNumber);
+    localStorage.setItem(`mel_chapters_${chapter.storyId}`, JSON.stringify(list));
+  } catch {}
+};
+
+/**
+ * Delete a custom chapter from localStorage.
+ */
+export const deleteCustomChapterFromStorage = (storyId: string, chapterId: string): void => {
+  try {
+    const list = getStoredCustomChapters(storyId);
+    const filtered = list.filter((c) => c.id !== chapterId);
+    localStorage.setItem(`mel_chapters_${storyId}`, JSON.stringify(filtered));
+  } catch {}
+};
+
 export const getStoryChapters = (storyId: string): Chapter[] => {
+  // 1. Retrieve custom author-published chapters first
+  const customChapters = getStoredCustomChapters(storyId);
+
+  // 2. Retrieve base sample chapters
+  let baseChapters: Chapter[] = [];
   if (SAMPLE_CHAPTERS[storyId] && SAMPLE_CHAPTERS[storyId].length > 0) {
-    return SAMPLE_CHAPTERS[storyId];
+    baseChapters = SAMPLE_CHAPTERS[storyId];
+  } else if (storyId === 'anh-dao-nam-centimet' && SAMPLE_CHAPTERS['anh-dao-5cm']) {
+    baseChapters = SAMPLE_CHAPTERS['anh-dao-5cm'];
+  } else if (storyId === 'anh-dao-5cm' && SAMPLE_CHAPTERS['anh-dao-nam-centimet']) {
+    baseChapters = SAMPLE_CHAPTERS['anh-dao-nam-centimet'];
+  } else {
+    // Rich fallback
+    baseChapters = [
+      {
+        id: `${storyId}-c1`,
+        storyId,
+        chapterNumber: 1,
+        partType: 'main',
+        isExtra: false,
+        title: 'Chương 1: Khởi đầu ngày hè ngọt ngào',
+        publishedAt: '2026-06-10',
+        isLocked: false,
+        wordCount: 2800,
+        translatorNote: 'Lời Mellifluous: Chúc các bạn có những giây phút đọc truyện thư giãn!',
+        content: `Nắng vàng rực rỡ chiếu rọi qua những tán cây mùa hạ, mang theo làn gió trong trẻo và hương hoa cỏ thơm ngát.\n\nTừng câu chuyện tình yêu luôn bắt đầu từ những điều giản dị và chân thành nhất...`,
+      },
+      {
+        id: `${storyId}-c2`,
+        storyId,
+        chapterNumber: 2,
+        partType: 'main',
+        isExtra: false,
+        title: 'Chương 2: Những rung động đầu tiên',
+        publishedAt: '2026-06-18',
+        isLocked: false,
+        wordCount: 3200,
+        translatorNote: 'Lời Mellifluous: Hãy để trái tim được thả lỏng trong từng trang sách.',
+        content: `Thế giới ngoài kia dù có ồn ào vội vã, chỉ cần dừng chân lại nơi đây, bạn sẽ luôn tìm thấy sự dịu dàng và an yên...`,
+      },
+      {
+        id: `${storyId}-pn1`,
+        storyId,
+        chapterNumber: 3,
+        partType: 'extra',
+        isExtra: true,
+        extraNumber: 1,
+        title: 'Phiên ngoại 1: Kỷ niệm mùa hè & Hương hoa sữa',
+        publishedAt: '2026-06-25',
+        isLocked: false,
+        wordCount: 3100,
+        translatorNote: 'Lời Mellifluous: Phiên ngoại ngọt lịm tặng độc giả thân yêu 🌸',
+        content: `Tiếng chuông gió ngân vang báo hiệu một mùa hè mới lại về.\n\nNhững mẩu chuyện thường nhật nho nhỏ nhưng đong đầy tình cảm chân thành giữa hai người...`,
+      },
+      {
+        id: `${storyId}-pn2`,
+        storyId,
+        chapterNumber: 4,
+        partType: 'extra',
+        isExtra: true,
+        extraNumber: 2,
+        title: 'Phiên ngoại 2: Bức thư tình viết cho tương lai (VIP - Có pass)',
+        publishedAt: '2026-07-02',
+        isLocked: true,
+        wordCount: 3450,
+        translatorNote: 'Lời Mellifluous: Phiên ngoại đặc biệt có cài mật khẩu nhẹ nhàng nhé! Pass là "mellifluous".',
+        content: `Gửi người cùng tớ đi qua những năm tháng tuổi trẻ rực rỡ nhất:\n\nDù năm tháng có đổi thay, tình cảm này vẫn nguyên vẹn như giọt nắng mùa hạ ban đầu...`,
+      },
+    ];
   }
-  if (storyId === 'anh-dao-nam-centimet' && SAMPLE_CHAPTERS['anh-dao-5cm']) {
-    return SAMPLE_CHAPTERS['anh-dao-5cm'];
+
+  // 3. Merge custom chapters with base chapters, avoiding duplicates
+  if (customChapters.length > 0) {
+    const customNumbers = new Set(customChapters.map((c) => c.chapterNumber));
+    const merged = [
+      ...baseChapters.filter((c) => !customNumbers.has(c.chapterNumber)),
+      ...customChapters,
+    ];
+    merged.sort((a, b) => a.chapterNumber - b.chapterNumber);
+    return merged;
   }
-  if (storyId === 'anh-dao-5cm' && SAMPLE_CHAPTERS['anh-dao-nam-centimet']) {
-    return SAMPLE_CHAPTERS['anh-dao-nam-centimet'];
-  }
 
-  // Rich Fallback for other stories (guaranteeing both Chính truyện and Phiên ngoại)
-  return [
-    {
-      id: `${storyId}-c1`,
-      storyId,
-      chapterNumber: 1,
-      partType: 'main',
-      isExtra: false,
-      title: 'Chương 1: Khởi đầu ngày hè ngọt ngào',
-      publishedAt: '2026-06-10',
-      isLocked: false,
-      wordCount: 2800,
-      translatorNote: 'Lời Mellifluous: Chúc các bạn có những giây phút đọc truyện thư giãn!',
-      content: `Nắng vàng rực rỡ chiếu rọi qua những tán cây mùa hạ, mang theo làn gió trong trẻo và hương hoa cỏ thơm ngát.
-
-Từng câu chuyện tình yêu luôn bắt đầu từ những điều giản dị và chân thành nhất...`,
-    },
-    {
-      id: `${storyId}-c2`,
-      storyId,
-      chapterNumber: 2,
-      partType: 'main',
-      isExtra: false,
-      title: 'Chương 2: Những rung động đầu tiên',
-      publishedAt: '2026-06-18',
-      isLocked: false,
-      wordCount: 3200,
-      translatorNote: 'Lời Mellifluous: Hãy để trái tim được thả lỏng trong từng trang sách.',
-      content: `Thế giới ngoài kia dù có ồn ào vội vã, chỉ cần dừng chân lại nơi đây, bạn sẽ luôn tìm thấy sự dịu dàng và an yên...`,
-    },
-    {
-      id: `${storyId}-pn1`,
-      storyId,
-      chapterNumber: 3,
-      partType: 'extra',
-      isExtra: true,
-      extraNumber: 1,
-      title: 'Phiên ngoại 1: Kỷ niệm mùa hè & Hương hoa sữa',
-      publishedAt: '2026-06-25',
-      isLocked: false,
-      wordCount: 3100,
-      translatorNote: 'Lời Mellifluous: Phiên ngoại ngọt lịm tặng độc giả thân yêu 🌸',
-      content: `Tiếng chuông gió ngân vang báo hiệu một mùa hè mới lại về.
-
-Những mẩu chuyện thường nhật nho nhỏ nhưng đong đầy tình cảm chân thành giữa hai người...`,
-    },
-    {
-      id: `${storyId}-pn2`,
-      storyId,
-      chapterNumber: 4,
-      partType: 'extra',
-      isExtra: true,
-      extraNumber: 2,
-      title: 'Phiên ngoại 2: Bức thư tình viết cho tương lai (VIP - Có pass)',
-      publishedAt: '2026-07-02',
-      isLocked: true,
-      wordCount: 3450,
-      translatorNote: 'Lời Mellifluous: Phiên ngoại đặc biệt có cài mật khẩu nhẹ nhàng nhé! Pass là "mellifluous".',
-      content: `Gửi người cùng tớ đi qua những năm tháng tuổi trẻ rực rỡ nhất:
-
-Dù năm tháng có đổi thay, tình cảm này vẫn nguyên vẹn như giọt nắng mùa hạ ban đầu...`,
-    },
-  ];
+  return baseChapters;
 };
 
 export const ANNOUNCEMENTS: Announcement[] = [

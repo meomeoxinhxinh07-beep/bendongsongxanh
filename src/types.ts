@@ -66,22 +66,26 @@ export interface CommentReply {
   text: string;
   createdAt: string;
   isAuthor?: boolean;
-  userEmail?: string;
+  isCollaborator?: boolean;
+  roleBadge?: string;
+  userEmail?: string | null;
 }
 
 export interface RealtimeComment {
   id: string;
   storyId: string;
-  chapterId?: string;
-  chapterNumber?: number;
+  chapterId?: string | null;
+  chapterNumber?: number | null;
   user: string;
-  userEmail?: string;
-  userId?: string;
+  userEmail?: string | null;
+  userId?: string | null;
   isAuthor?: boolean;
+  isCollaborator?: boolean;
+  roleBadge?: string;
   avatar: string;
   text: string;
   createdAt: string;
-  rating?: number;
+  rating?: number | null;
   replies?: CommentReply[];
 }
 

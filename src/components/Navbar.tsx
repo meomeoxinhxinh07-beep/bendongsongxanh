@@ -66,8 +66,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     badge?: string;
   }
 
-  // 5 desktop navigation items - "Trang chủ" is integrated into the brand title/logo
+  // 6 desktop navigation items with explicit Trang chủ and responsive labels
   const desktopNavItems: NavItem[] = [
+    {
+      id: 'home',
+      label: 'Trang chủ',
+      shortLabel: 'Trang chủ',
+      icon: <Home className="w-3.5 h-3.5 stroke-[1.75]" />,
+    },
     {
       id: 'completed',
       label: 'Truyện đã hoàn',
@@ -90,27 +96,19 @@ export const Navbar: React.FC<NavbarProps> = ({
     {
       id: 'other',
       label: 'Góc tâm sự & Nhạc',
-      shortLabel: 'Tâm sự & Nhạc',
+      shortLabel: 'Tâm sự',
       icon: <Heart className="w-3.5 h-3.5 stroke-[1.75]" />,
     },
     {
       id: 'about',
       label: 'Về Mellifluous',
-      shortLabel: 'Về Mel',
+      shortLabel: 'Giới thiệu',
       icon: <Info className="w-3.5 h-3.5 stroke-[1.75]" />,
     },
   ];
 
-  // Mobile navigation includes explicit Home option
-  const mobileNavItems: NavItem[] = [
-    {
-      id: 'home',
-      label: 'Trang chủ',
-      shortLabel: 'Trang chủ',
-      icon: <Home className="w-4 h-4 stroke-[1.75]" />,
-    },
-    ...desktopNavItems,
-  ];
+  // Mobile navigation includes the exact same clean items
+  const mobileNavItems: NavItem[] = desktopNavItems;
 
   const handleSelect = (tab: ActiveTab) => {
     onSelectTab(tab);
@@ -126,31 +124,21 @@ export const Navbar: React.FC<NavbarProps> = ({
         bg-white/95 border-pink-100/80 text-stone-800
         dark:bg-stone-900/95 dark:border-stone-800/90 dark:text-stone-100 shadow-xs"
     >
-      <div className="w-full max-w-7xl mx-auto px-2.5 sm:px-4 lg:px-6 h-14 sm:h-16 flex items-center justify-between gap-1 sm:gap-2 lg:gap-4 box-border">
+      <div className="w-full max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 h-14 sm:h-16 flex items-center justify-between gap-2 lg:gap-3 box-border">
         {/* =================================================================== */}
-        {/* 1. BRAND TITLE & LOGO: INTEGRATED HOME BUTTON (VỀ TRANG CHỦ)        */}
+        {/* 1. BRAND LOGO (CLICK TO RETURN HOME)                                */}
         {/* =================================================================== */}
-        <div className="flex items-center min-w-0 shrink-0">
+        <div className="flex items-center shrink-0">
           <button
             type="button"
             id="navbar-logo-btn"
             onClick={() => handleSelect('home')}
-            className={`group flex items-center gap-1.5 sm:gap-2 text-left focus:outline-hidden cursor-pointer p-1 -ml-1 rounded-xl transition-all duration-200 ${
-              isHomeActive
-                ? 'bg-pink-50/80 dark:bg-stone-800/60'
-                : 'hover:bg-pink-50/50 dark:hover:bg-stone-800/40'
-            }`}
-            title="Nhấp vào tiêu đề để về Trang chủ (better and better)"
+            className="group flex items-center gap-2 text-left focus:outline-hidden cursor-pointer p-1 -ml-1 rounded-xl transition-all duration-200 hover:bg-pink-50/70 dark:hover:bg-stone-800/60"
+            title="Nhấp để về Trang chủ (better and better)"
             aria-label="Về Trang chủ blog Mellifluous"
           >
             {/* Flower Logo Icon Stamp */}
-            <div
-              className={`relative shrink-0 flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-xl transition-all duration-300 ${
-                isHomeActive
-                  ? 'bg-gradient-to-tr from-pink-300 via-rose-200 to-amber-200 dark:from-pink-900/80 dark:via-rose-900/60 dark:to-amber-900/50 border border-pink-400/80 dark:border-pink-500/60 shadow-xs ring-2 ring-pink-300/50 dark:ring-pink-500/40 scale-102'
-                  : 'bg-gradient-to-tr from-pink-200 via-rose-100 to-amber-100 dark:from-pink-950/60 dark:via-rose-900/40 dark:to-amber-950/40 border border-pink-300/50 dark:border-pink-500/30 shadow-2xs group-hover:scale-105'
-              }`}
-            >
+            <div className="relative shrink-0 flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-pink-200 via-rose-100 to-amber-100 dark:from-pink-950/60 dark:via-rose-900/40 dark:to-amber-950/40 border border-pink-300/50 dark:border-pink-500/30 shadow-2xs group-hover:scale-105 transition-all">
               <span className="text-xs sm:text-sm select-none">🌸</span>
               <span className="absolute -bottom-0.5 -right-0.5 flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span>
@@ -160,16 +148,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Title & Subtitle block */}
             <div className="flex flex-col justify-center min-w-0">
-              <div className="flex items-center gap-1">
-                <span className="font-serif text-sm sm:text-base lg:text-lg font-bold tracking-tight bg-gradient-to-r from-pink-600 via-rose-500 to-amber-600 dark:from-pink-400 dark:via-rose-300 dark:to-amber-300 bg-clip-text text-transparent whitespace-nowrap leading-tight group-hover:opacity-90">
-                  better and better
-                </span>
-                {isHomeActive && (
-                  <span className="hidden md:inline-flex text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.2 rounded-full bg-pink-100 text-pink-700 dark:bg-pink-950/90 dark:text-pink-300 border border-pink-200/80 dark:border-pink-800 shadow-2xs">
-                    Trang chủ
-                  </span>
-                )}
-              </div>
+              <span className="font-serif text-sm sm:text-base lg:text-lg font-bold tracking-tight bg-gradient-to-r from-pink-600 via-rose-500 to-amber-600 dark:from-pink-400 dark:via-rose-300 dark:to-amber-300 bg-clip-text text-transparent whitespace-nowrap leading-tight group-hover:opacity-90">
+                better and better
+              </span>
               <span className="hidden xs:block text-[9px] sm:text-[10px] text-stone-500 dark:text-stone-400 font-sans tracking-tight whitespace-nowrap leading-tight">
                 Mellifluous ━ Mùa hạ
               </span>
@@ -178,11 +159,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
 
         {/* =================================================================== */}
-        {/* 2. CENTERED DESKTOP NAVIGATION (VISIBLE ON lg: 1024px+, NO OVERFLOW)*/}
+        {/* 2. CENTERED DESKTOP NAVIGATION (NO OVERLAP, RESPONSIVE LABELS)      */}
         {/* =================================================================== */}
         <nav
           aria-label="Thanh điều hướng chính"
-          className="hidden lg:flex items-center justify-center gap-1 xl:gap-1.5 flex-1 max-w-2xl mx-auto px-1 min-w-0"
+          className="hidden lg:flex items-center justify-center gap-1 xl:gap-1.5 flex-1 min-w-0 px-1 overflow-hidden"
         >
           {desktopNavItems.map((item) => {
             const isActive = currentTab === item.id;
@@ -192,7 +173,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 id={`nav-link-${item.id}`}
                 type="button"
                 onClick={() => handleSelect(item.id)}
-                className={`group relative px-2 xl:px-2.5 py-1.5 rounded-xl text-xs xl:text-[13px] font-medium transition-all duration-200 flex items-center gap-1 xl:gap-1.5 whitespace-nowrap cursor-pointer ${
+                className={`group relative px-2 xl:px-2.5 py-1.5 rounded-xl text-xs xl:text-[13px] font-medium transition-all duration-200 flex items-center gap-1 xl:gap-1.5 whitespace-nowrap cursor-pointer shrink-0 ${
                   isActive
                     ? 'bg-pink-100/90 text-pink-900 dark:bg-pink-950/80 dark:text-pink-200 font-semibold shadow-2xs border border-pink-200/80 dark:border-pink-800'
                     : 'text-stone-600 hover:text-pink-600 hover:bg-pink-50/70 dark:text-stone-300 dark:hover:text-pink-300 dark:hover:bg-stone-800/60'
@@ -232,11 +213,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               id="navbar-author-studio-btn"
               onClick={onOpenAuthorModal}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-pink-50 hover:bg-pink-100/90 text-pink-700 dark:bg-pink-950/80 dark:text-pink-300 dark:hover:bg-pink-900/80 border border-pink-200/80 dark:border-pink-800 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-pink-100/90 hover:bg-pink-200/90 text-pink-800 dark:bg-pink-950/80 dark:text-pink-300 dark:hover:bg-pink-900/80 border border-pink-200/80 dark:border-pink-800 text-xs font-semibold shadow-2xs transition-all cursor-pointer whitespace-nowrap"
               title="Trung tâm Quản lý bài đăng & Đưa số liệu về 0 (Chỉ dành cho Tác giả)"
             >
               <span className="select-none text-xs">🌸</span>
-              <span className="hidden md:inline">Bàn làm việc Tác giả</span>
+              <span className="hidden xl:inline">Bàn làm việc Tác giả</span>
+              <span className="inline xl:hidden">Bàn làm việc</span>
             </button>
           )}
 

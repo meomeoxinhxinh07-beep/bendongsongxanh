@@ -139,12 +139,33 @@
         "publishedAt": { "type": "string" },
         "initialized": { "type": "boolean" }
       }
+    },
+    "reader_letters": {
+      "title": "Reader Letters",
+      "description": "Heartfelt letters and confessions submitted by authenticated readers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sender": { "type": "string" },
+        "senderEmail": { "type": "string" },
+        "tag": { "type": "string" },
+        "message": { "type": "string" },
+        "isPrivate": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "likes": { "type": "number" },
+        "authorReply": { "type": "string" }
+      },
+      "required": ["message"]
     }
   },
   "firestore": {
     "/site_stats/{statId}": {
       "schema": "site_stats",
       "description": "Global statistics like total visits and online users"
+    },
+    "/reader_letters/{letterId}": {
+      "schema": "reader_letters",
+      "description": "Heartfelt confessions and letters sent by readers"
     },
     "/story_stats/{storyId}": {
       "schema": "story_stats",
